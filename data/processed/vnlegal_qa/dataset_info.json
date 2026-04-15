@@ -1,0 +1,56 @@
+{
+  "citation": "",
+  "description": "",
+  "features": {
+    "qa_id": {
+      "dtype": "large_string",
+      "_type": "Value"
+    },
+    "passage_id": {
+      "dtype": "large_string",
+      "_type": "Value"
+    },
+    "question": {
+      "dtype": "large_string",
+      "_type": "Value"
+    },
+    "answer": {
+      "dtype": "large_string",
+      "_type": "Value"
+    },
+    "question_type": {
+      "dtype": "large_string",
+      "_type": "Value"
+    },
+    "difficulty": {
+      "dtype": "large_string",
+      "_type": "Value"
+    },
+    "macro_domain": {
+      "dtype": "large_string",
+      "_type": "Value"
+    },
+    "question_count": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "question_len_char": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "question_len_word": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "answer_len_char": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "answer_len_word": {
+      "dtype": "int64",
+      "_type": "Value"
+    }
+  },
+  "homepage": "",
+  "license": ""
+}
