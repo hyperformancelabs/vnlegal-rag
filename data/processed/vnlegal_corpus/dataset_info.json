@@ -1,0 +1,32 @@
+{
+  "citation": "",
+  "description": "",
+  "features": {
+    "passage_id": {
+      "dtype": "large_string",
+      "_type": "Value"
+    },
+    "doc_name": {
+      "dtype": "large_string",
+      "_type": "Value"
+    },
+    "article_content": {
+      "dtype": "large_string",
+      "_type": "Value"
+    },
+    "macro_domain": {
+      "dtype": "large_string",
+      "_type": "Value"
+    },
+    "article_len_char": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "article_len_word": {
+      "dtype": "int64",
+      "_type": "Value"
+    }
+  },
+  "homepage": "",
+  "license": ""
+}
