@@ -1,0 +1,45 @@
+{
+  "version": "textcnn_v2",
+  "tokenizer_backend": "pyvi",
+  "max_len": 128,
+  "labels": [
+    "Civil & Investment",
+    "Finance & Banking",
+    "Industry, Resources & Environment",
+    "Justice & Dispute Resolution",
+    "Labor & Insurance",
+    "Security & Defense",
+    "State Organization & Admin",
+    "Transportation"
+  ],
+  "label2id": {
+    "Civil & Investment": 0,
+    "Finance & Banking": 1,
+    "Industry, Resources & Environment": 2,
+    "Justice & Dispute Resolution": 3,
+    "Labor & Insurance": 4,
+    "Security & Defense": 5,
+    "State Organization & Admin": 6,
+    "Transportation": 7
+  },
+  "id2label": {
+    "0": "Civil & Investment",
+    "1": "Finance & Banking",
+    "2": "Industry, Resources & Environment",
+    "3": "Justice & Dispute Resolution",
+    "4": "Labor & Insurance",
+    "5": "Security & Defense",
+    "6": "State Organization & Admin",
+    "7": "Transportation"
+  },
+  "pad_token": "<PAD>",
+  "unk_token": "<UNK>",
+  "train_strategy": {
+    "sampling": "shuffle",
+    "class_weighting": "inv_freq_pow_1.0",
+    "label_smoothing": 0.0,
+    "lr": 0.0005,
+    "weight_decay": 0.0,
+    "dropout": 0.6
+  }
+}
