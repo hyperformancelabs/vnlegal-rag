@@ -1,7 +1,7 @@
 {
   "max_q_len": 64,
   "max_d_len": 256,
-  "margin": 0.3,
+  "margin": 0.75,
   "embed_dim": 200,
   "hidden_size": 256,
   "num_layers": 2

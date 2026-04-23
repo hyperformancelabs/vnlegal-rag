@@ -1,7 +1,8 @@
 {
-  "version": "textcnn_v2",
+  "version": "textcnn",
   "tokenizer_backend": "pyvi",
   "max_len": 128,
+  "max_vocab_cap": 10000,
   "labels": [
     "Civil & Investment",
     "Finance & Banking",
@@ -36,10 +37,37 @@
   "unk_token": "<UNK>",
   "train_strategy": {
     "sampling": "shuffle",
-    "class_weighting": "inv_freq_pow_1.0",
-    "label_smoothing": 0.0,
-    "lr": 0.0005,
-    "weight_decay": 0.0,
-    "dropout": 0.6
+    "loss": "focal_class_weighted",
+    "focal_gamma": 2.0,
+    "ce_minority_gamma": 1.0,
+    "ce_class_weights": {
+      "Civil & Investment": 1.574513,
+      "Finance & Banking": 0.329293,
+      "Industry, Resources & Environment": 1.914017,
+      "Justice & Dispute Resolution": 0.470781,
+      "Labor & Insurance": 0.762747,
+      "Security & Defense": 2.069207,
+      "State Organization & Admin": 0.406967,
+      "Transportation": 0.472475
+    },
+    "optimizer": "adadelta",
+    "adadelta_lr": 1.0,
+    "adadelta_rho": 0.95,
+    "adadelta_eps": 1e-06,
+    "batch_size": 50,
+    "grad_clip": "none",
+    "max_norm_fc": 3.0,
+    "label_smoothing": 0.05,
+    "weight_decay": 0.0001,
+    "dropout": 0.55,
+    "embed_dropout": 0.2,
+    "scheduler": "none",
+    "early_stop_metric": "composite",
+    "early_stop_patience": 5,
+    "early_stop_min_delta": 1e-05,
+    "early_stop_val_loss_weight": 0.12,
+    "best_val_monitor": 0.491122,
+    "best_val_f1_at_ckpt": 0.573154,
+    "best_val_loss_at_ckpt": 0.683603
   }
 }
