@@ -41,6 +41,16 @@ The current fixed validation split is group-safe, but it is small and does not c
 python -m pip install -r requirements.txt
 ```
 
+## Standard Pipeline
+
+Run the standardized data + embedding pipeline from project root:
+
+```bash
+python -m model.standard_pipeline
+```
+
+This command executes data preparation, rebuilds shared embedding artifacts, validates required outputs, and writes a run report to `artifacts/pipeline_runs/`.
+
 ## Train
 
 ```bash

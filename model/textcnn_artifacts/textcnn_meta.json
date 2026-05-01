@@ -1,8 +1,8 @@
 {
   "version": "textcnn",
-  "tokenizer_backend": "pyvi",
+  "tokenizer_backend": "simple_tokenize",
   "max_len": 128,
-  "max_vocab_cap": 10000,
+  "max_vocab_cap": 6227,
   "labels": [
     "Civil & Investment",
     "Finance & Banking",
@@ -39,21 +39,23 @@
     "sampling": "shuffle",
     "loss": "focal_class_weighted",
     "focal_gamma": 2.0,
-    "ce_minority_gamma": 1.0,
+    "ce_minority_gamma": 1.5,
     "ce_class_weights": {
-      "Civil & Investment": 1.574513,
-      "Finance & Banking": 0.329293,
-      "Industry, Resources & Environment": 1.914017,
-      "Justice & Dispute Resolution": 0.470781,
-      "Labor & Insurance": 0.762747,
-      "Security & Defense": 2.069207,
-      "State Organization & Admin": 0.406967,
-      "Transportation": 0.472475
+      "Civil & Investment": 1.688137,
+      "Finance & Banking": 0.161459,
+      "Industry, Resources & Environment": 2.262596,
+      "Justice & Dispute Resolution": 0.276004,
+      "Labor & Insurance": 0.569192,
+      "Security & Defense": 2.543282,
+      "State Organization & Admin": 0.221834,
+      "Transportation": 0.277496
     },
     "optimizer": "adadelta",
-    "adadelta_lr": 1.0,
+    "adadelta_lr_base": 1.0,
+    "adadelta_lr_embed": 0.35,
     "adadelta_rho": 0.95,
     "adadelta_eps": 1e-06,
+    "embed_freeze_epochs": 0,
     "batch_size": 50,
     "grad_clip": "none",
     "max_norm_fc": 3.0,
@@ -66,8 +68,8 @@
     "early_stop_patience": 5,
     "early_stop_min_delta": 1e-05,
     "early_stop_val_loss_weight": 0.12,
-    "best_val_monitor": 0.491122,
-    "best_val_f1_at_ckpt": 0.573154,
-    "best_val_loss_at_ckpt": 0.683603
+    "best_val_monitor": 0.567149,
+    "best_val_f1_at_ckpt": 0.630516,
+    "best_val_loss_at_ckpt": 0.528052
   }
 }

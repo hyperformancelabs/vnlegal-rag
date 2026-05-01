@@ -1,7 +1,0 @@
-numpy>=1.26
-pandas>=2.2
-scikit-learn>=1.5
-torch>=2.2
-transformers>=4.46
-tqdm>=4.66
-pyvi>=0.1.1
