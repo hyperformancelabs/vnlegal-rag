@@ -94,7 +94,7 @@ def main():
     }, embed_path)
     
     print(f"   Saved embedding to {embed_path}")
-    print("\n✓ Shared embedding build completed successfully.")
+    print("\nShared embedding build completed successfully.")
 
 if __name__ == "__main__":
     main()

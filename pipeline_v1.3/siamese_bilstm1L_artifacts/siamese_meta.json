@@ -1,0 +1,22 @@
+{
+  "distance_metric": "cosine",
+  "encoder": "bilstm_traditional_cosine",
+  "pipeline": "v1.3",
+  "data_dir": "/kaggle/input/datasets/hngphtrn/legals-v3",
+  "shared_embed_dir": "/kaggle/input/datasets/hngphtrn/legal-embedding-v3",
+  "max_q_len": 64,
+  "max_d_len": 256,
+  "margin": 0.3,
+  "embed_dim": 200,
+  "bidirectional": true,
+  "hidden_size_per_direction": 255,
+  "pooled_dim": 510,
+  "num_layers": 1,
+  "dropout": 0.3,
+  "trainable_params": 2177680,
+  "negatives": "batch_hard_online_cosine",
+  "batch_size": 128,
+  "drop_last": true,
+  "epochs": 50,
+  "patience": 5
+}
