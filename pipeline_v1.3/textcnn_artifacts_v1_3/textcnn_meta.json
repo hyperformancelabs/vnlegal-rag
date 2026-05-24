@@ -1,0 +1,62 @@
+{
+  "model_name": "TextCNN",
+  "reference": "Kim 2014",
+  "version": "textcnn_v1_3",
+  "tokenizer_backend": "simple_tokenize",
+  "text_mode": "question_answer",
+  "shared_embed_dir": "pipeline_v1.3/shared_embedding_artifacts",
+  "data_dir": "/content/data/data_ready_v1_3",
+  "max_len": 256,
+  "max_vocab_cap": 6087,
+  "filter_sizes": [
+    2,
+    3,
+    4,
+    5
+  ],
+  "num_filters": 128,
+  "dropout": 0.5,
+  "label_smoothing": 0.05,
+  "use_class_weight": true,
+  "labels": [
+    "Finance & Banking",
+    "Justice & Dispute Resolution",
+    "Labor & Insurance",
+    "State Organization & Admin",
+    "Transportation",
+    "other"
+  ],
+  "num_classes": 6,
+  "best_metric": "val_macro_f1",
+  "label2id": {
+    "Finance & Banking": 0,
+    "Justice & Dispute Resolution": 1,
+    "Labor & Insurance": 2,
+    "State Organization & Admin": 3,
+    "Transportation": 4,
+    "other": 5
+  },
+  "id2label": {
+    "0": "Finance & Banking",
+    "1": "Justice & Dispute Resolution",
+    "2": "Labor & Insurance",
+    "3": "State Organization & Admin",
+    "4": "Transportation",
+    "5": "other"
+  },
+  "pad_token": "<PAD>",
+  "unk_token": "<UNK>",
+  "best_val_macro_f1": 0.884866,
+  "train_strategy": {
+    "optimizer": "adam",
+    "lr": 0.001,
+    "weight_decay": 0.0001,
+    "batch_size": 32,
+    "label_smoothing": 0.05,
+    "dropout": 0.5,
+    "use_class_weight": true,
+    "early_stop_metric": "val_macro_f1",
+    "early_stop_patience": 4,
+    "max_norm_fc": 3.0
+  }
+}

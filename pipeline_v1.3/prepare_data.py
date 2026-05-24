@@ -189,6 +189,12 @@ def main() -> None:
     save_split(data_ready, "corpus_val", corpus_val)
     save_split(data_ready, "corpus_test", corpus_test)
 
+    corpus_ready_full = pd.concat(
+        [corpus_train, corpus_val, corpus_test], ignore_index=True
+    ).drop_duplicates(subset=["passage_id"]).reset_index(drop=True)
+    assert corpus_ready_full["passage_id"].is_unique, "Duplicate passage_id in corpus_ready_full"
+    save_split(data_ready, "corpus_ready_full", corpus_ready_full)
+
     print("\nQA split sizes:")
     print("train:", len(train_df))
     print("val  :", len(val_df))

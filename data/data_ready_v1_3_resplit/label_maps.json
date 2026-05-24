@@ -1,0 +1,48 @@
+{
+  "label_list": [
+    "Civil & Investment",
+    "Finance & Banking",
+    "Justice & Dispute Resolution",
+    "Labor & Insurance",
+    "State Organization & Admin",
+    "Transportation",
+    "other"
+  ],
+  "label2id": {
+    "Civil & Investment": 0,
+    "Finance & Banking": 1,
+    "Justice & Dispute Resolution": 2,
+    "Labor & Insurance": 3,
+    "State Organization & Admin": 4,
+    "Transportation": 5,
+    "other": 6
+  },
+  "id2label": {
+    "0": "Civil & Investment",
+    "1": "Finance & Banking",
+    "2": "Justice & Dispute Resolution",
+    "3": "Labor & Insurance",
+    "4": "State Organization & Admin",
+    "5": "Transportation",
+    "6": "other"
+  },
+  "other_merge": {
+    "strategy": "resplit_macro_domain_only_then_bottom_k",
+    "merge_bottom_k": 2,
+    "other_label": "other",
+    "domains_merged_to_other": [
+      "Security & Defense",
+      "Industry, Resources & Environment"
+    ],
+    "train_counts_before_merge": {
+      "Finance & Banking": 5496,
+      "State Organization & Admin": 4581,
+      "Transportation": 3694,
+      "Justice & Dispute Resolution": 3600,
+      "Labor & Insurance": 2409,
+      "Civil & Investment": 1536,
+      "Industry, Resources & Environment": 1095,
+      "Security & Defense": 888
+    }
+  }
+}

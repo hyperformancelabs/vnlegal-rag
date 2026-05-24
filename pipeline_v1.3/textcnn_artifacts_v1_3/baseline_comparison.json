@@ -1,0 +1,29 @@
+{
+  "test_split": "qa_test",
+  "baseline": {
+    "variant": "question_only",
+    "text_mode": "question",
+    "max_len": 128,
+    "acc_top1": 0.5566422343254089,
+    "acc_top2": 0.7938060164451599,
+    "acc_top3": 0.8736756443977356,
+    "macro_f1": 0.4952547357797921,
+    "loss": 1.1721729361729205
+  },
+  "new": {
+    "variant": "question_answer",
+    "text_mode": "question_answer",
+    "max_len": 256,
+    "acc_top1": 0.6972290277481079,
+    "acc_top2": 0.8321108222007751,
+    "acc_top3": 0.9229828715324402,
+    "macro_f1": 0.5967703553535638,
+    "loss": 0.9921596289263961
+  },
+  "delta_new_minus_baseline": {
+    "acc_top1": 0.14058679342269897,
+    "acc_top2": 0.038304805755615234,
+    "acc_top3": 0.04930722713470459,
+    "macro_f1": 0.1015156195737717
+  }
+}
