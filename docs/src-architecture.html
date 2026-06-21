@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VNLegal RAG — Kiến trúc package <code>src</code></title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#171a2b; --panel2:#1e2238; --ink:#e7e9f3; --muted:#a6abc9;
+    --line:#2b3052; --accent:#6ea8fe; --green:#5fd39b; --amber:#f2c66d; --pink:#f48fb1;
+    --code:#0b0e1a; --radius:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    background:linear-gradient(180deg,#0c0f1c,#0f1220 30%);color:var(--ink);line-height:1.6}
+  a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+  code,pre{font-family:"JetBrains Mono",Consolas,Monaco,monospace}
+  code{background:var(--code);padding:.12em .4em;border-radius:6px;font-size:.88em;color:#cfe0ff}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 22px 80px}
+  header.hero{padding:30px 26px;border:1px solid var(--line);border-radius:16px;
+    background:radial-gradient(120% 140% at 0% 0%,#23284a,#141729);margin-bottom:26px}
+  header.hero h1{margin:0 0 6px;font-size:1.85rem;letter-spacing:.2px}
+  header.hero p{margin:.2rem 0;color:var(--muted)}
+  .pills{margin-top:14px;display:flex;flex-wrap:wrap;gap:8px}
+  .pill{font-size:.78rem;padding:4px 10px;border-radius:999px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--ink)}
+  .pill.g{border-color:#2f6b4f;color:#bff0d6} .pill.a{border-color:#7a5e22;color:#ffe6b0}
+  h2{margin:38px 0 14px;font-size:1.3rem;border-left:3px solid var(--accent);padding-left:12px}
+  h3{margin:22px 0 8px;font-size:1.05rem;color:#dfe4ff}
+  p{color:#d4d8ef}
+  .grid{display:grid;gap:16px}
+  @media(min-width:760px){.grid.cols2{grid-template-columns:1fr 1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px}
+  .card h3{margin-top:0;display:flex;align-items:center;gap:8px}
+  .tag{font-size:.7rem;padding:2px 8px;border-radius:6px;background:var(--panel2);
+    border:1px solid var(--line);color:var(--muted);font-weight:600}
+  .tag.pkg{color:#bcd2ff;border-color:#33508f}
+  .tree{background:var(--code);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px 20px;overflow:auto;font-size:.86rem;color:#cdd6f4;white-space:pre}
+  .tree .dir{color:#8fb6ff;font-weight:600} .tree .file{color:#e7e9f3}
+  .tree .cmt{color:#6f779c}
+  table{width:100%;border-collapse:collapse;font-size:.9rem;margin:6px 0;overflow:hidden;
+    border-radius:10px;border:1px solid var(--line)}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--panel2);color:#cfd6ff;font-weight:600}
+  tr:last-child td{border-bottom:none}
+  td code{white-space:nowrap}
+  .flow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:8px 0}
+  .node{background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+    padding:9px 13px;font-size:.85rem;min-width:90px;text-align:center}
+  .node.b{border-color:#33508f;color:#cfe0ff} .node.g{border-color:#2f6b4f;color:#bff0d6}
+  .node.p{border-color:#7a3f55;color:#ffd0e0} .node.a{border-color:#7a5e22;color:#ffe6b0}
+  .arrow{color:var(--muted);font-size:1.1rem}
+  ul.fn{margin:8px 0 0;padding-left:0;list-style:none}
+  ul.fn li{padding:5px 0;border-top:1px dashed var(--line)}
+  ul.fn li:first-child{border-top:none}
+  ul.fn .sig{color:#bff0d6} ul.fn .d{color:var(--muted);font-size:.88rem}
+  .note{background:#1a2030;border:1px solid #33508f;border-left:4px solid var(--accent);
+    border-radius:10px;padding:12px 16px;color:#d4ddff;font-size:.92rem}
+  .warn{border-color:#7a5e22;border-left-color:var(--amber);background:#221d12;color:#ffe6b0}
+  pre.code{background:var(--code);border:1px solid var(--line);border-radius:10px;
+    padding:14px 16px;overflow:auto;font-size:.84rem;color:#cfe0ff}
+  .kpi{display:flex;gap:18px;flex-wrap:wrap;margin-top:8px}
+  .kpi div{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 16px;text-align:center}
+  .kpi b{display:block;font-size:1.4rem;color:#fff} .kpi span{font-size:.76rem;color:var(--muted)}
+  footer{margin-top:50px;color:var(--muted);font-size:.82rem;text-align:center;border-top:1px solid var(--line);padding-top:18px}
+  .best{color:#5fd39b;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>VNLegal RAG — Package <code>src</code></h1>
+  <p>Pipeline truy hồi văn bản pháp luật tiếng Việt (v1.3), được trích xuất từ notebook thành package Python tái sử dụng được.</p>
+  <p>Topic-filter (TextCNN) → ứng viên theo <code>macro_domain</code> → chấm điểm <b>sparse</b> (TF-IDF), <b>dense</b> (Siamese LSTM), hoặc <b>hybrid</b>.</p>
+  <div class="pills">
+    <span class="pill">21 file Python</span>
+    <span class="pill">~1530 LOC</span>
+    <span class="pill">5 subpackage</span>
+    <span class="pill g">4 retrieval modes</span>
+    <span class="pill">PyTorch + scikit-learn</span>
+  </div>
+</header>
+
+<h2>1. Tổng quan</h2>
+<p>
+  <code>src</code> là package đóng gói toàn bộ logic của pipeline truy hồi: nạp dữ liệu &amp; artifacts,
+  dựng chỉ mục, chạy mô hình, và đánh giá. Notebook chỉ <em>điều phối</em> — mọi xử lý nằm trong <code>src</code>.
+  Điểm vào công khai:
+</p>
+<pre class="code">from src import PipelineConfig, RetrievalPipeline, build_markdown_table
+
+pipe = RetrievalPipeline.from_config(PipelineConfig())   # nạp data + artifacts + dựng index
+pipe.retrieve_tfidf_textcnn("Hợp đồng lao động thời vụ ...")   # sparse
+pipe.retrieve_siamese_textcnn("...")                          # dense  (cần Siamese weights)
+pipe.retrieve_hybrid_textcnn("...")                          # hybrid (weighted-sum)
+metrics = pipe.evaluate("test")                              # Recall@k + MRR</pre>
+
+<h2>2. Cấu trúc thư mục</h2>
+<div class="tree">
+<span class="dir">src/</span>
+├── <span class="file">__init__.py</span>        <span class="cmt"># warm-up conv + re-export API công khai</span>
+├── <span class="file">factory.py</span>         <span class="cmt"># tìm artifact + nạp checkpoint (load_textcnn/load_siamese)</span>
+├── <span class="file">pipeline.py</span>        <span class="cmt"># PipelineConfig + RetrievalPipeline (4 mode) + seed_everything</span>
+├── <span class="dir">data/</span>
+│   ├── <span class="file">loaders.py</span>     <span class="cmt"># repo-root, resolve split, load corpus/qa/labels</span>
+│   └── <span class="file">processors.py</span>  <span class="cmt"># detect_text_col, dedupe_corpus</span>
+├── <span class="dir">models/</span>
+│   ├── <span class="file">classifier.py</span>  <span class="cmt"># TextCNN (topic) + state-dict builder</span>
+│   └── <span class="file">bi_encoder.py</span>  <span class="cmt"># LSTMEncoder, SiameseLSTM + state-dict helpers</span>
+├── <span class="dir">retrieval/</span>
+│   ├── <span class="file">sparse.py</span>      <span class="cmt"># TF-IDF index/score + topic filter (predict_topic_topk)</span>
+│   ├── <span class="file">dense.py</span>       <span class="cmt"># Siamese encode/precompute/score</span>
+│   ├── <span class="file">fusion.py</span>      <span class="cmt"># minmax_norm, weighted_sum</span>
+│   ├── <span class="file">hybrid.py</span>      <span class="cmt"># hybrid_scores (sparse+dense)</span>
+│   └── <span class="file">__init__.py</span>    <span class="cmt"># format_results, top_k_order + re-export</span>
+├── <span class="dir">evaluation/</span>
+│   ├── <span class="file">metrics.py</span>     <span class="cmt"># rank_of, aggregate_metrics, build_markdown_table</span>
+│   └── <span class="file">evaluator.py</span>   <span class="cmt"># evaluate_retriever (vòng lặp QA)</span>
+└── <span class="dir">utils/</span>
+    ├── <span class="file">text.py</span>        <span class="cmt"># tokenizer: simple_tokenize, encode_text, vocab IO</span>
+    ├── <span class="file">device.py</span>      <span class="cmt"># default_device (env VNLEGAL_DEVICE)</span>
+    └── <span class="file">io.py</span>          <span class="cmt"># read_ready_csv (tsv), read_json</span>
+</div>
+<div class="note">Các module <code>mining/</code>, <code>reranking/</code>, <code>training/</code>, <code>models/cross_encoder.py</code>
+được <b>bỏ qua có chủ đích</b> (YAGNI) vì chưa có cài đặt — sẽ thêm khi cần.</div>
+
+<h2>3. Luồng dữ liệu</h2>
+<h3>Build — <code>RetrievalPipeline.from_config()</code></h3>
+<div class="flow">
+  <span class="node b">PipelineConfig</span><span class="arrow">→</span>
+  <span class="node">data/ loaders</span><span class="arrow">→</span>
+  <span class="node a">factory<br>load_textcnn</span><span class="arrow">→</span>
+  <span class="node">sparse<br>TF-IDF index</span><span class="arrow">→</span>
+  <span class="node a">factory<br>load_siamese</span><span class="arrow">→</span>
+  <span class="node g">dense<br>precompute emb</span>
+</div>
+<h3>Query — một câu hỏi qua 4 mode</h3>
+<div class="flow">
+  <span class="node">question</span><span class="arrow">→</span>
+  <span class="node b">TextCNN<br>predict_topic_topk</span><span class="arrow">→</span>
+  <span class="node">candidate_indices<br>(lọc macro_domain)</span><span class="arrow">→</span>
+  <span class="node">score</span>
+</div>
+<div class="flow" style="margin-left:24px">
+  <span class="arrow">↳</span><span class="node">tfidf_scores</span>
+  <span class="arrow">↳</span><span class="node g">siamese_scores</span>
+  <span class="arrow">↳</span><span class="node p">hybrid_scores<br>(α·sparse+(1-α)·dense)</span>
+  <span class="arrow">→</span><span class="node">top_k_order → format_results</span>
+</div>
+<div class="note"><code>retrieve_siamese_only</code> bỏ bước topic-filter, chấm điểm trên <b>toàn corpus</b>.</div>
+
+<h2>4. Bốn mode truy hồi</h2>
+<table>
+  <tr><th>Method</th><th>Topic filter</th><th>Scoring</th><th>Yêu cầu Siamese</th></tr>
+  <tr><td><code>retrieve_tfidf_textcnn</code></td><td>✓</td><td>TF-IDF (sparse)</td><td>không</td></tr>
+  <tr><td><code>retrieve_siamese_textcnn</code></td><td>✓</td><td>Siamese (dense)</td><td>có</td></tr>
+  <tr><td><code>retrieve_siamese_only</code></td><td>✗ (toàn corpus)</td><td>Siamese (dense)</td><td>có</td></tr>
+  <tr><td><code>retrieve_hybrid_textcnn</code></td><td>✓</td><td>weighted-sum sparse+dense</td><td>có</td></tr>
+</table>
+<div class="note">Nếu không có Siamese weights, 3 mode dense tự động bị vô hiệu (graceful degrade) — chỉ <code>tfidf_textcnn</code> chạy.</div>
+
+<h2>5. Chi tiết từng thành phần</h2>
+<div class="grid cols2">
+
+  <div class="card">
+    <h3><span class="tag pkg">utils</span> text.py</h3>
+    <p class="d" style="color:var(--muted)">Tokenizer chuẩn + IO vocab. Không phụ thuộc pyvi/underthesea → chạy mọi nơi.</p>
+    <ul class="fn">
+      <li><span class="sig">simple_tokenize(text)</span><div class="d">lowercase + regex <code>\w+</code> (giữ dấu tiếng Việt)</div></li>
+      <li><span class="sig">encode_text / encode_with_mask</span><div class="d">token→id, pad/truncate; bản mask trả thêm mask 1/0</div></li>
+      <li><span class="sig">build_vocab / load_vocab / save_vocab</span><div class="d">dựng &amp; đọc <code>tokenizer_vocab.json</code></div></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag pkg">utils</span> device.py · io.py</h3>
+    <ul class="fn">
+      <li><span class="sig">default_device()</span><div class="d">CPU/CUDA; override bằng env <code>VNLEGAL_DEVICE</code></div></li>
+      <li><span class="sig">read_ready_csv(path)</span><div class="d">đọc CSV tab-separated (split chuẩn)</div></li>
+      <li><span class="sig">read_json(path)</span><div class="d">đọc JSON UTF-8 (meta/label maps)</div></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag pkg">data</span> loaders.py</h3>
+    <ul class="fn">
+      <li><span class="sig">locate_repo_root()</span><div class="d">dò repo root từ marker thư mục</div></li>
+      <li><span class="sig">resolve_data_dir(candidates)</span><div class="d">chọn dir đầu tiên có qa_train/val/test.csv</div></li>
+      <li><span class="sig">load_corpus / load_qa / load_label_list</span><div class="d">nạp corpus (dedupe passage_id), 3 split QA, danh sách nhãn</div></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag pkg">data</span> processors.py</h3>
+    <ul class="fn">
+      <li><span class="sig">detect_text_col(df)</span><div class="d">tìm cột text (<code>article_content</code>/<code>text</code>)</div></li>
+      <li><span class="sig">dedupe_corpus(df)</span><div class="d">bỏ trùng theo <code>passage_id</code> + reset index (căn hàng với ma trận)</div></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag pkg">models</span> classifier.py</h3>
+    <p class="d" style="color:var(--muted)">Bộ lọc chủ đề Kim-style TextCNN (filter 3/4/5, max-over-time pool).</p>
+    <ul class="fn">
+      <li><span class="sig">class TextCNN</span><div class="d">embedding → conv1d → ReLU → maxpool → fc</div></li>
+      <li><span class="sig">build_textcnn_from_state_dict(state, n)</span><div class="d">suy ra kích thước kiến trúc trực tiếp từ weights</div></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag pkg">models</span> bi_encoder.py</h3>
+    <p class="d" style="color:var(--muted)">Dense bi-encoder — masked mean-pool + L2 normalize.</p>
+    <ul class="fn">
+      <li><span class="sig">class LSTMEncoder</span><div class="d">embedding → LSTM → mean-pool có mask → chuẩn hoá L2</div></li>
+      <li><span class="sig">class SiameseLSTM</span><div class="d">twin encoder, forward trả cosine similarity</div></li>
+      <li><span class="sig">infer_siamese_config / add_encoder_prefix_if_needed</span><div class="d">suy config + vá prefix key checkpoint</div></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag pkg">retrieval</span> sparse.py</h3>
+    <ul class="fn">
+      <li><span class="sig">build_tfidf_index(texts, max_feat)</span><div class="d">fit TF-IDF, trả ma trận L2-normalized</div></li>
+      <li><span class="sig">tfidf_scores(q, idx, ...)</span><div class="d">cosine TF-IDF query↔corpus[idx]</div></li>
+      <li><span class="sig">predict_topic_topk(q, textcnn, ...)</span><div class="d">top-k <code>macro_domain</code> từ TextCNN</div></li>
+      <li><span class="sig">candidate_indices_for_labels(...)</span><div class="d">hợp các index theo nhãn; fallback toàn corpus</div></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag pkg">retrieval</span> dense.py</h3>
+    <ul class="fn">
+      <li><span class="sig">precompute_doc_embeddings(...)</span><div class="d">encode toàn corpus 1 lần (batch)</div></li>
+      <li><span class="sig">encode_query_siamese(...)</span><div class="d">encode 1 query → vector L2</div></li>
+      <li><span class="sig">siamese_scores(q, idx, emb, ...)</span><div class="d">dot-product query↔doc_embeddings[idx]</div></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag pkg">retrieval</span> fusion.py · hybrid.py</h3>
+    <ul class="fn">
+      <li><span class="sig">minmax_norm(scores)</span><div class="d">scale [0,1] để 2 thang điểm so sánh được</div></li>
+      <li><span class="sig">weighted_sum(sparse, dense, α)</span><div class="d"><code>α·sparse + (1−α)·dense</code></div></li>
+      <li><span class="sig">hybrid_scores(q, idx, ..., α=0.7)</span><div class="d">norm rồi fuse TF-IDF + Siamese trên cùng pool</div></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag pkg">retrieval</span> __init__.py</h3>
+    <ul class="fn">
+      <li><span class="sig">format_results(df, col, idx, scores)</span><div class="d">dựng DataFrame kết quả xếp hạng</div></li>
+      <li><span class="sig">top_k_order(scores, k)</span><div class="d">index top-k giảm dần</div></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag pkg">evaluation</span> metrics.py · evaluator.py</h3>
+    <ul class="fn">
+      <li><span class="sig">rank_of(gold, ranked)</span><div class="d">vị trí 1-based của passage vàng</div></li>
+      <li><span class="sig">aggregate_metrics(name, ranks, ks)</span><div class="d">gộp thành Recall@k + MRR</div></li>
+      <li><span class="sig">evaluate_retriever(name, fn, qa, ...)</span><div class="d">chạy retriever trên mẫu QA, thu rank</div></li>
+      <li><span class="sig">build_markdown_table(rows)</span><div class="d">render bảng markdown</div></li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3><span class="tag">root</span> factory.py</h3>
+    <ul class="fn">
+      <li><span class="sig">select_artifact_dir(candidates, ...)</span><div class="d">chọn dir artifact hợp lệ đầu tiên + file weight</div></li>
+      <li><span class="sig">load_textcnn(dir, w, device)</span><div class="d">bundle TextCNN: model, stoi, id2label, max_len</div></li>
+      <li><span class="sig">load_siamese(dir, w, device)</span><div class="d">bundle Siamese; trả <code>None</code> nếu thiếu (degrade)</div></li>
+    </ul>
+  </div>
+
+</div>
+
+<h2>6. Cấu hình &amp; artifacts mặc định</h2>
+<p><code>PipelineConfig</code> (trong <code>pipeline.py</code>) — path candidates thử theo thứ tự, dir tồn tại đầu tiên thắng:</p>
+<table>
+  <tr><th>Thành phần</th><th>Mặc định (model/)</th><th>Ghi chú</th></tr>
+  <tr><td>Data split</td><td><code>data/data_ready</code></td><td>8 nhãn macro_domain</td></tr>
+  <tr><td>TextCNN</td><td><code>model/textcnn_artifacts</code></td><td>max_len=128</td></tr>
+  <tr><td>Siamese</td><td><code>model/siamese_lstm_traditional_cosine_artifacts</code></td><td>LSTM cosine, mean-pool</td></tr>
+</table>
+<table>
+  <tr><th>Tham số</th><th>Mặc định</th><th>Ý nghĩa</th></tr>
+  <tr><td><code>seed</code></td><td>42</td><td>reproducibility</td></tr>
+  <tr><td><code>topic_topk</code></td><td>3</td><td>số chủ đề lấy ứng viên</td></tr>
+  <tr><td><code>retrieve_k</code></td><td>10</td><td>độ sâu trả về</td></tr>
+  <tr><td><code>tfidf_max_features</code></td><td>200000</td><td>kích thước từ vựng TF-IDF</td></tr>
+  <tr><td><code>hybrid_alpha</code></td><td>0.7</td><td>trọng số TF-IDF trong hybrid</td></tr>
+  <tr><td><code>eval_sample_n</code></td><td>200</td><td>cỡ mẫu đánh giá (None = toàn bộ)</td></tr>
+</table>
+
+<h2>7. Kết quả đánh giá (qa_test, n=200)</h2>
+<table>
+  <tr><th>Pipeline</th><th>Recall@1</th><th>Recall@3</th><th>Recall@5</th><th>Recall@10</th><th>MRR</th></tr>
+  <tr><td>tfidf_textcnn</td><td>0.480</td><td>0.650</td><td>0.725</td><td>0.780</td><td>0.578</td></tr>
+  <tr><td>siamese_textcnn</td><td>0.300</td><td>0.460</td><td>0.545</td><td>0.635</td><td>0.404</td></tr>
+  <tr><td>siamese_only</td><td>0.335</td><td>0.485</td><td>0.565</td><td>0.625</td><td>0.428</td></tr>
+  <tr><td class="best">hybrid_textcnn</td><td class="best">0.515</td><td class="best">0.690</td><td class="best">0.755</td><td class="best">0.820</td><td class="best">0.617</td></tr>
+</table>
+<div class="kpi">
+  <div><b>0.515</b><span>Hybrid Recall@1</span></div>
+  <div><b>0.820</b><span>Hybrid Recall@10</span></div>
+  <div><b>0.617</b><span>Hybrid MRR</span></div>
+  <div><b>+0.04</b><span>so với TF-IDF (R@10)</span></div>
+</div>
+<div class="note">Hybrid (α=0.7) vượt cả 4 chỉ số so với TF-IDF-only — dense bổ sung tín hiệu bù trừ. α chưa grid-search.</div>
+
+<h2>8. Chạy notebook</h2>
+<p>Notebook <code>src/run-pipeline.ipynb</code> điều phối toàn bộ pipeline, hiển thị output từng bước (build → topic → 4 mode → eval). Chạy headless:</p>
+<pre class="code">VNLEGAL_DEVICE=cpu python -m nbconvert --to notebook --execute --inplace src/run-pipeline.ipynb</pre>
+
+<footer>
+  VNLegal RAG · tài liệu kiến trúc <code>src</code> · sinh tự động, cập nhật theo mã nguồn hiện hành.
+</footer>
+
+</div>
+</body>
+</html>

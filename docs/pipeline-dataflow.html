@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VNLegal RAG — Luồng Dữ Liệu & Phương Thức Hoạt Động Pipeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true
+    }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+  :root {
+    --bg: #070913;
+    --panel: rgba(18, 22, 43, 0.7);
+    --panel-solid: #12162b;
+    --panel-glow: rgba(0, 242, 254, 0.03);
+    --border: rgba(43, 50, 85, 0.7);
+    --border-hover: rgba(0, 242, 254, 0.4);
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --text-bright: #ffffff;
+    
+    /* Brand Colors */
+    --cyan: #00f2fe;
+    --blue: #4facfe;
+    --gradient-brand: linear-gradient(135deg, var(--cyan) 0%, var(--blue) 100%);
+    --gradient-glow: radial-gradient(circle at 50% 50%, rgba(0, 242, 254, 0.15), transparent 60%);
+    
+    --green: #10b981;
+    --amber: #f59e0b;
+    --pink: #ec4899;
+    --purple: #8b5cf6;
+    
+    --code-bg: #0b0e1a;
+    --radius-lg: 16px;
+    --radius-md: 10px;
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-title: 'Outfit', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background-color: var(--bg);
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(79, 172, 254, 0.08) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(0, 242, 254, 0.05) 0px, transparent 50%);
+    background-attachment: fixed;
+    color: var(--text);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 40px 24px 100px;
+  }
+
+  /* Header Section */
+  header.hero {
+    position: relative;
+    padding: 48px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: linear-gradient(135deg, rgba(23, 29, 58, 0.9) 0%, rgba(13, 16, 33, 0.95) 100%);
+    backdrop-filter: blur(20px);
+    margin-bottom: 40px;
+    overflow: hidden;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  }
+
+  header.hero::before {
+    content: '';
+    position: absolute;
+    top: -150px;
+    right: -150px;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(0, 242, 254, 0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .meta-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--cyan);
+    margin-bottom: 12px;
+  }
+
+  header.hero h1 {
+    font-family: var(--font-title);
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text-bright);
+    margin-bottom: 16px;
+    background: linear-gradient(to right, #ffffff, #cfd9df, var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  header.hero p.lead {
+    font-size: 1.15rem;
+    color: var(--text-muted);
+    max-width: 900px;
+    margin-bottom: 24px;
+  }
+
+  .pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .pill {
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 99px;
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid var(--border);
+    color: var(--text);
+    transition: all 0.2s ease;
+  }
+
+  .pill.primary {
+    background: rgba(0, 242, 254, 0.08);
+    border-color: rgba(0, 242, 254, 0.3);
+    color: var(--cyan);
+  }
+
+  .pill.success {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: var(--green);
+  }
+
+  /* Navigation Sidebar Layout */
+  .layout {
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr);
+    gap: 40px;
+  }
+
+  @media (max-width: 992px) {
+    .layout {
+      grid-template-columns: 1fr;
+    }
+    aside {
+      position: relative !important;
+      top: 0 !important;
+      margin-bottom: 30px;
+    }
+  }
+
+  /* Sticky Navigation */
+  aside {
+    position: sticky;
+    top: 40px;
+    height: fit-content;
+  }
+
+  .nav-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    backdrop-filter: blur(10px);
+  }
+
+  .nav-box h4 {
+    font-family: var(--font-title);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-bright);
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+  }
+
+  .nav-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .nav-item a {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 8px 12px;
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+    border-left: 2px solid transparent;
+  }
+
+  .nav-item a:hover {
+    color: var(--cyan);
+    background: rgba(255, 255, 255, 0.03);
+    border-left-color: var(--cyan);
+    padding-left: 16px;
+  }
+
+  .nav-group-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--cyan);
+    font-weight: 700;
+    margin: 14px 0 6px 12px;
+  }
+
+  /* Content Styling */
+  main {
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+  }
+
+  section {
+    scroll-margin-top: 40px;
+  }
+
+  .section-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 36px;
+    backdrop-filter: blur(10px);
+    transition: box-shadow 0.3s ease;
+  }
+
+  .section-card:hover {
+    box-shadow: 0 10px 30px rgba(0, 242, 254, 0.02);
+  }
+
+  .section-card h2 {
+    font-family: var(--font-title);
+    font-size: 1.8rem;
+    color: var(--text-bright);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-card h2 .num {
+    background: var(--gradient-brand);
+    color: var(--bg);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: var(--font-sans);
+  }
+
+  .section-card p {
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    font-size: 1rem;
+    line-height: 1.7;
+  }
+
+  .section-card p strong {
+    color: var(--text-bright);
+  }
+
+  /* Example Panel Styles */
+  .example-panel {
+    background: rgba(255, 242, 204, 0.02);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+    border-left: 4px solid var(--amber);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    margin: 24px 0;
+  }
+
+  .example-panel h4 {
+    font-family: var(--font-title);
+    font-size: 1.05rem;
+    color: var(--amber);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .example-panel h4 svg {
+    color: var(--amber);
+  }
+
+  /* Grid details */
+  .grid {
+    display: grid;
+    gap: 20px;
+    margin: 24px 0;
+  }
+
+  .grid.cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 768px) {
+    .grid.cols-2 {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .info-box {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    transition: border-color 0.2s ease;
+  }
+
+  .info-box:hover {
+    border-color: var(--border-hover);
+  }
+
+  .info-box h3 {
+    font-family: var(--font-title);
+    font-size: 1.1rem;
+    color: var(--text-bright);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .info-box h3 svg {
+    color: var(--cyan);
+  }
+
+  .info-box p {
+    font-size: 0.92rem;
+    margin-bottom: 0;
+  }
+
+  /* Formulas */
+  .formula-container {
+    background: var(--code-bg);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius-md);
+    padding: 16px 20px;
+    margin: 20px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .formula-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    align-self: flex-start;
+  }
+
+  .math {
+    font-family: 'Cambria Math', 'Times New Roman', serif;
+    font-size: 1.25rem;
+    color: var(--cyan);
+    font-style: italic;
+    padding: 8px 0;
+  }
+
+  .math-def {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+  }
+
+  /* Code blocks */
+  pre {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  pre.code-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: #e2e8f0;
+    margin: 20px 0;
+    position: relative;
+  }
+
+  pre.code-block::after {
+    content: attr(data-lang);
+    position: absolute;
+    top: 6px;
+    right: 12px;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .code-keyword { color: #f472b6; }
+  .code-func { color: #38bdf8; }
+  .code-str { color: #34d399; }
+  .code-num { color: #fbbf24; }
+  .code-comment { color: #64748b; font-style: italic; }
+  .code-builtin { color: #a78bfa; }
+
+  /* Table styling */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 0.9rem;
+  }
+
+  th, td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    background: rgba(30, 41, 59, 0.5);
+    color: var(--text-bright);
+    font-weight: 600;
+    font-family: var(--font-title);
+  }
+
+  tr:hover td {
+    background: rgba(255, 255, 255, 0.01);
+  }
+
+  /* Diagram Area */
+  .diagram-container {
+    background: rgba(11, 14, 28, 0.85);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    margin: 32px 0;
+    overflow-x: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .diagram-title {
+    font-family: var(--font-title);
+    font-size: 1rem;
+    color: var(--text-bright);
+    margin-bottom: 16px;
+    align-self: flex-start;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  footer {
+    text-align: center;
+    margin-top: 80px;
+    padding-top: 30px;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+
+  footer a {
+    color: var(--cyan);
+    text-decoration: none;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HERO HEADER -->
+  <header class="hero">
+    <div class="meta-tag">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+      Technical Deep Dive
+    </div>
+    <h1>Phương Thức Hoạt Động & Luồng Dữ Liệu RAG Pipeline</h1>
+    <p class="lead">Kiến trúc chi tiết hệ thống VNLegal RAG (v1.3): Sắp xếp tuần tự theo đúng tiến trình phân tích dữ liệu tĩnh (Offline Ingestion/Build) và quá trình truy hồi động (Online Query/Retrieval), kèm ví dụ minh họa trực quan từ dữ liệu thô đầu vào.</p>
+    <div class="pills">
+      <span class="pill primary">Raw Data Ingestion</span>
+      <span class="pill success">Chronological Flow</span>
+      <span class="pill">Detailed Examples</span>
+      <span class="pill primary">TextCNN Classifier</span>
+      <span class="pill">Hybrid Score Fusion</span>
+    </div>
+  </header>
+
+  <!-- MAIN LAYOUT -->
+  <div class="layout">
+    
+    <!-- NAVIGATION SIDEBAR -->
+    <aside>
+      <div class="nav-box">
+        <h4>Luồng Pipeline</h4>
+        
+        <div class="nav-group-title">0. Dữ Liệu Đầu Vào</div>
+        <ul class="nav-list">
+          <li class="nav-item"><a href="#raw-data">Cấu Trúc Dữ Liệu Thô</a></li>
+        </ul>
+
+        <div class="nav-group-title">A. Giai đoạn Offline (Build)</div>
+        <ul class="nav-list">
+          <li class="nav-item"><a href="#offline-intro">Khởi Động Build-time</a></li>
+          <li class="nav-item"><a href="#step1-preprocess">B1. Nạp & Làm Sạch Data</a></li>
+          <li class="nav-item"><a href="#step2-tokenize">B2. Phân Tách Từ & Vocab</a></li>
+          <li class="nav-item"><a href="#neural-training">B2.5. Huấn Luyện TextCNN & BiLSTM</a></li>
+          <li class="nav-item"><a href="#step3-sparse-dense">B3. Dựng Vector Sparse & Dense</a></li>
+          <li class="nav-item"><a href="#step4-indexing">B4. Cache & Lưu Chỉ Mục</a></li>
+        </ul>
+
+        <div class="nav-group-title">B. Giai đoạn Online (Query)</div>
+        <ul class="nav-list">
+          <li class="nav-item"><a href="#step5-query">B5. Tiếp Nhận Query</a></li>
+          <li class="nav-item"><a href="#step6-textcnn">B6. TextCNN (Lọc Chủ Đề)</a></li>
+          <li class="nav-item"><a href="#step7-scoring">B7. Tính Điểm Song Song</a></li>
+          <li class="nav-item"><a href="#step8-minmax">B8. Chuẩn Hóa Min-Max</a></li>
+          <li class="nav-item"><a href="#step9-fusion">B9. Dung Hợp & Kết Quả</a></li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- CONTENT BODY -->
+    <main>
+
+      <!-- SECTION 0: RAW DATA -->
+      <section id="raw-data" class="section-card">
+        <h2><span class="num">0</span>Cấu Trúc Dữ Liệu Thô Ban Đầu (Raw Data Schema)</h2>
+        <p>Trước khi đi vào bất kỳ bước xử lý hay tính toán đặc trưng nào của pipeline, dữ liệu thô của hệ thống được lưu trữ dưới dạng thư mục dữ liệu định dạng **Arrow / Hugging Face Dataset** tại thư mục <code>data/raw/</code>. Dữ liệu này bao gồm hai bảng thực thể chính có liên hệ khóa ngoài chặt chẽ với nhau:</p>
+        
+        <div class="grid cols-2">
+          <div class="info-box">
+            <h3>1. Bảng Corpus Luật (vnlegal_corpus)</h3>
+            <p>Lưu trữ toàn bộ các điều luật, quy định pháp luật được chia nhỏ theo mức độ đoạn luật (passage/article).</p>
+            <table style="font-size: 0.8rem; margin-top: 10px;">
+              <thead>
+                <tr><th>Thuộc tính (Column)</th><th>Kiểu dữ liệu</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><code>passage_id</code> <i>(Primary Key)</i></td><td>String (e.g. "doc_12_art_3")</td></tr>
+                <tr><td><code>doc_name</code></td><td>String (Tên văn bản luật)</td></tr>
+                <tr><td><code>article_content</code></td><td>String (Nội dung văn bản luật)</td></tr>
+                <tr><td><code>macro_domain</code></td><td>String (Phân loại chủ đề rộng)</td></tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <div class="info-box">
+            <h3>2. Bảng Câu Hỏi & Đáp (vnlegal_qa)</h3>
+            <p>Lưu trữ các câu hỏi huấn luyện và đánh giá thực tế của người dùng đi kèm đáp án và mối liên kết đến điều luật chứa câu trả lời.</p>
+            <table style="font-size: 0.8rem; margin-top: 10px;">
+              <thead>
+                <tr><th>Thuộc tính (Column)</th><th>Kiểu dữ liệu</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><code>qa_id</code></td><td>String (Mã câu hỏi duy nhất)</td></tr>
+                <tr><td><code>passage_id</code> <i>(Foreign Key)</i></td><td>String (Liên kết sang bảng luật)</td></tr>
+                <tr><td><code>question</code></td><td>String (Câu hỏi thô)</td></tr>
+                <tr><td><code>answer</code></td><td>String (Đáp án trả lời thô)</td></tr>
+                <tr><td><code>question_type</code> / <code>difficulty</code></td><td>String (Phân loại & độ khó)</td></tr>
+                <tr><td><code>macro_domain</code></td><td>String (Chủ đề pháp lý)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="example-panel">
+          <h4>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            Ví Dụ Một Bản Ghi Thô Bản Đầu (Raw JSON)
+          </h4>
+          <p><strong>Dòng Corpus Thô (vnlegal_corpus):</strong></p>
+          <pre style="background: var(--code-bg); padding: 12px; border-radius: 6px; color: var(--cyan); font-family: var(--font-mono); font-size: 0.8rem; margin-bottom: 12px;">{
+  "passage_id": "bhxh_2014_d2_k1",
+  "doc_name": "Luật Bảo hiểm xã hội 2014",
+  "article_content": "Đối tượng áp dụng bắt buộc đóng bảo hiểm xã hội gồm: Người lao động làm việc theo hợp đồng lao động không xác định thời hạn, hợp đồng lao động có thời hạn từ đủ 03 tháng đến dưới 12 tháng, kể cả hợp đồng lao động được ký kết giữa người sử dụng lao động với người đại diện theo pháp luật của người dưới 15 tuổi...",
+  "macro_domain": "Bảo hiểm xã hội"
+}</pre>
+          
+          <p><strong>Dòng QA Thô Tương Ứng (vnlegal_qa):</strong></p>
+          <pre style="background: var(--code-bg); padding: 12px; border-radius: 6px; color: var(--pink); font-family: var(--font-mono); font-size: 0.8rem;">{
+  "qa_id": "qa_user_8902",
+  "passage_id": "bhxh_2014_d2_k1",
+  "question": "Tôi ký hợp đồng lao động 6 tháng thì có thuộc diện phải tham gia đóng bảo hiểm xã hội bắt buộc hay không?",
+  "answer": "Có. Căn cứ khoản 1 điều 2 Luật BHXH 2014, người làm việc theo hợp đồng từ đủ 3 tháng đến dưới 12 tháng thuộc đối tượng bắt buộc tham gia BHXH.",
+  "question_type": "Chính sách pháp luật",
+  "difficulty": "Dễ",
+  "macro_domain": "Bảo hiểm xã hội"
+}</pre>
+          <div style="border-top: 1px dashed var(--border); padding-top: 12px; margin-top: 16px; font-size: 0.88rem; color: var(--text-muted);">
+            <strong>Ánh Xạ Thực Tế Trong Mã Nguồn:</strong>
+            <br>&bull; Các hàm nạp dữ liệu từ định dạng Arrow Dataset được triển khai trong tệp <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/src/data/loaders.py"><code>src/data/loaders.py</code></a> (bao gồm các hàm <code>load_corpus</code>, <code>load_qa</code>).
+          </div>
+        </div>
+      </section>
+
+      <!-- EXPLANATION MODEL SETUP -->
+      <section id="offline-intro" class="section-card">
+        <h2>Tổng Quan Dữ Liệu Ví Dụ Minh Họa</h2>
+        <p>Để giải thích dòng chảy dữ liệu qua các bước xử lý của pipeline một cách trực quan nhất, tài liệu này sử dụng một bộ dữ liệu giả định rút gọn đại diện cho cấu trúc thô nêu trên:</p>
+        
+        <div class="example-panel">
+          <h4>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="9" x2="15" y2="9"></line><line x1="9" y1="13" x2="15" y2="13"></line></svg>
+            Bộ Dữ Liệu Mẫu Tĩnh (Corpus)
+          </h4>
+          <p style="margin-bottom: 8px;"><strong>Tài liệu 0 (Passage 0):</strong> "Hợp đồng lao động thời vụ dưới 1 tháng không bắt buộc đóng bảo hiểm xã hội bắt buộc." (Nhãn chủ đề: <code>Lao dong</code>)</p>
+          <p style="margin-bottom: 8px;"><strong>Tài liệu 1 (Passage 1):</strong> "Người lao động có nghĩa vụ tuân thủ nội quy lao động của doanh nghiệp." (Nhãn chủ đề: <code>Lao dong</code>)</p>
+          <p style="margin-bottom: 8px;"><strong>Tài liệu 2 (Passage 2):</strong> "Doanh nghiệp phải nộp tờ khai đăng ký thuế trong thời hạn quy định." (Nhãn chủ đề: <code>Doanh nghiep</code>)</p>
+          <p style="margin-top: 14px; margin-bottom: 0;"><strong>Truy vấn người dùng (Query):</strong> "Hợp đồng lao động thời vụ có phải đóng bảo hiểm xã hội không?"</p>
+        </div>
+      </section>
+
+      <!-- PART A: BUILD-TIME / OFFLINE -->
+      <div style="border-left: 2px solid var(--cyan); padding-left: 16px;">
+        <h3 style="font-family: var(--font-title); font-size: 1.4rem; color: var(--cyan); margin-bottom: 24px; text-transform: uppercase; letter-spacing: 1px;">Phần A. Giai Đoạn Huấn Luyện & Chỉ Mục Hóa (Offline / Build-Time)</h3>
+
+        <!-- B1: PREPROCESS -->
+        <section id="step1-preprocess" class="section-card" style="margin-bottom: 32px;">
+          <h2><span class="num">1</span>Bước 1: Nạp & Tiền Xử Lý Dữ Liệu Sơ Bộ</h2>
+          <p>Dữ liệu thô từ cơ sở dữ liệu hoặc tệp CSV/TSV được đưa vào hệ thống và được chuẩn hóa cấu trúc thông qua lớp <code>processors.py</code>.</p>
+          
+          <div class="grid cols-2">
+            <div class="info-box">
+              <h3>Deduplication (Loại bỏ trùng lặp)</h3>
+              <p>Hệ thống rà soát khóa chính <code>passage_id</code>. Tất cả các hàng có nội dung điều luật trùng lặp sẽ bị loại bỏ để đảm bảo phân bố xác suất không bị lệch trong quá trình huấn luyện và tối ưu bộ nhớ ma trận chỉ mục.</p>
+            </div>
+            <div class="info-box">
+              <h3>Định vị cột nội dung</h3>
+              <p>Mã nguồn tự động nhận biết cột dữ liệu chứa văn bản luật chính thông qua hàm <code>detect_text_col</code> (ưu tiên các cột <code>article_content</code> hoặc <code>text</code>).</p>
+            </div>
+          </div>
+
+          <div class="example-panel">
+            <h4><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg> Kết Quả Sau Bước 1</h4>
+            <p>Hệ thống nạp vào bộ nhớ DataFrame gồm 3 dòng dữ liệu sạch với index là <code>[0, 1, 2]</code> đã được loại bỏ các ký tự rác.</p>
+          <div style="border-top: 1px dashed var(--border); padding-top: 12px; margin-top: 16px; font-size: 0.88rem; color: var(--text-muted);">
+            <strong>Ánh Xạ Thực Tế Trong Mã Nguồn:</strong>
+            <br>&bull; Các tác vụ tiền xử lý, định vị cột nội dung tự động được triển khai trong tệp <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/src/data/processors.py"><code>src/data/processors.py</code></a> (bao gồm hàm <code>detect_text_col</code>).
+          </div>
+        </section>
+
+        <!-- B2: TOKENIZE -->
+        <section id="step2-tokenize" class="section-card" style="margin-bottom: 32px;">
+          <h2><span class="num">2</span>Bước 2: Phân Tách Từ & Xây Dựng Từ Điển (Tokenizer & Vocab Building)</h2>
+          <p>Mỗi tài liệu trong Corpus được phân tích thành một danh sách các mã từ riêng biệt (Tokens) bằng cách áp dụng phương thức tách từ tùy chỉnh <code>simple_tokenize</code>.</p>
+          
+          <p>Quy trình thực hiện: Chuyển toàn bộ chuỗi sang chữ thường (lowercase), loại bỏ khoảng trắng thừa đầu cuối và sử dụng biểu thức chính quy (Regex) <code>\w+</code> để giữ lại các ký tự chữ (bao gồm cả ký tự tiếng Việt có dấu) và số.</p>
+
+          <pre class="code-block" data-lang="python"># Trích xuất thực tế từ pipeline_v1.3/tokenizer.py
+tokens_doc0 = simple_tokenize("Hợp đồng lao động thời vụ...")
+# Kết quả: ['hợp', 'đồng', 'lao', 'động', 'thời', 'vụ', 'dưới', '1', 'tháng', 'không', 'bắt', 'buộc', 'đóng', 'bảo', 'hiểm', 'xã', 'hội', 'bắt', 'buộc']</pre>
+
+          <p>Sau khi tách từ toàn bộ văn bản trong Corpus, hệ thống gom toàn bộ các từ duy nhất thu được để xây dựng bảng ánh xạ từ điển <code>stoi</code> (string-to-index) giới hạn kích thước tối đa 8,000 từ. Quy trình chi tiết gồm các bước sau:</p>
+
+          <div class="grid cols-2" style="margin-top: 20px;">
+            <div class="info-box">
+              <h3>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: middle;"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                1. Xây Dựng & Giới Hạn Từ Điển
+              </h3>
+              <p>Hệ thống đếm tần suất xuất hiện của tất cả các từ trong toàn bộ Corpus, sắp xếp giảm dần, và chỉ giữ lại <strong>7,998 từ có tần suất cao nhất</strong>. Việc giới hạn kích thước 8,000 từ giúp:</p>
+              <ul style="margin-left: 20px; font-size: 0.9rem; color: var(--text-muted); margin-top: 8px; list-style-type: disc;">
+                <li>Tránh hiện tượng quá khớp (Overfitting) trên các từ cực kỳ hiếm gặp hoặc lỗi chính tả.</li>
+                <li>Tối ưu hóa dung lượng bộ nhớ của Embedding Layer trong mạng Neural (BiLSTM/TextCNN).</li>
+                <li>Tối ưu hóa tốc độ huấn luyện và suy luận của mô hình.</li>
+              </ul>
+            </div>
+            <div class="info-box">
+              <h3>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: middle;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                2. Ý Nghĩa Của Token Đặc Biệt
+              </h3>
+              <p>Hai vị trí đầu tiên trong từ điển (Index 0 và 1) được dành riêng cho các Token đặc biệt:</p>
+              <ul style="margin-left: 20px; font-size: 0.9rem; color: var(--text-muted); margin-top: 8px; list-style-type: disc;">
+                <li><code>&lt;PAD&gt;</code> (Index 0 - Padding): Dùng để đệm các văn bản ngắn cho bằng chiều dài cố định (ví dụ: 256 đối với BiLSTM, 128 đối với TextCNN).</li>
+                <li><code>&lt;UNK&gt;</code> (Index 1 - Unknown): Dành cho các từ lạ không nằm trong từ điển (những từ ngoài danh sách 8,000 từ phổ biến nhất, hoặc từ mới xuất hiện trong câu truy vấn của người dùng).</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="info-box" style="margin: 24px 0; border-left: 4px solid var(--purple); background: rgba(139, 92, 246, 0.02); border-color: var(--purple);">
+            <h3 style="color: var(--purple); font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><path d="M16 18L22 12L16 6M8 6L2 12L8 18"></path></svg>
+              Ánh Xạ Thực Tế Trong Mã Nguồn (Codebase Mapping)
+            </h3>
+            <p style="font-size: 0.9rem; margin-top: 8px; margin-bottom: 0; color: var(--text-muted);">
+              Quy trình xây dựng từ điển <code>stoi</code> được lập trình cụ thể trong:
+              <br>&bull; <strong>Kịch bản chạy:</strong> <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/pipeline_v1.3/build_shared_embedding.py"><code>pipeline_v1.3/build_shared_embedding.py</code></a> (sử dụng hàm <code>build_vocab</code> trong <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/pipeline_v1.3/tokenizer.py"><code>tokenizer.py</code></a>).
+              <br>&bull; <strong>Tệp kết quả:</strong> Từ điển được kết xuất ra tệp cấu hình JSON <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/pipeline_v1.3/shared_embedding_artifacts/tokenizer_vocab.json"><code>tokenizer_vocab.json</code></a>.
+            </p>
+          </div>
+
+          <pre class="code-block" data-lang="python">
+# Mã Python mô phỏng cách hệ thống xây dựng stoi
+from collections import Counter
+
+def build_stoi(corpus_tokens, max_vocab_size=8000):
+    # 1. Đếm tần suất từ trong toàn bộ corpus
+    word_counts = Counter(corpus_tokens)
+    
+    # 2. Lấy top (max_vocab_size - 2) từ phổ biến nhất
+    most_common_words = [word for word, freq in word_counts.most_common(max_vocab_size - 2)]
+    
+    # 3. Tạo bảng stoi bắt đầu bằng &lt;PAD&gt; (0) và &lt;UNK&gt; (1)
+    stoi = {"&lt;PAD&gt;": 0, "&lt;UNK&gt;": 1}
+    for idx, word in enumerate(most_common_words):
+        stoi[word] = idx + 2 # Lùi 2 index cho PAD và UNK
+        
+    return stoi</pre>
+
+          <div class="example-panel">
+            <h4>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+              Ví Dụ Trực Quan: Bảng Ánh Xạ Từ Điển (Stoi) và Số Hóa Chuỗi Từ
+            </h4>
+            <p>Giả sử bảng <code>stoi</code> thu được sau khi phân tích Corpus có dạng:</p>
+            <pre style="background: var(--code-bg); padding: 12px; border-radius: 6px; color: var(--cyan); font-family: var(--font-mono); font-size: 0.8rem; margin-bottom: 16px; overflow-x: auto;">stoi = {
+  "&lt;PAD&gt;": 0, 
+  "&lt;UNK&gt;": 1, 
+  "lao": 2, 
+  "động": 3, 
+  "hợp": 4, 
+  "đồng": 5, 
+  "doanh": 6, 
+  "nghiệp": 7, 
+  "bảo": 8, 
+  "hiểm": 9,
+  "xã": 10,
+  "hội": 11,
+  "thuế": 12
+}</pre>
+
+            <p>Khi có một câu văn bản đầu vào: <strong>"Hợp đồng lao động đóng bảo hiểm thuế_thân"</strong></p>
+            <p style="margin-bottom: 12px;">Sau khi qua bước tách từ (tokenizer), ta được danh sách Tokens: <code>['hợp', 'đồng', 'lao', 'động', 'đóng', 'bảo', 'hiểm', 'thuế_thân']</code>. Quá trình ánh xạ thành ID số nguyên như sau:</p>
+
+            <table style="font-size: 0.85rem; margin-top: 10px;">
+              <thead>
+                <tr>
+                  <th>Token từ thô</th>
+                  <th>Trạng thái tìm kiếm trong stoi</th>
+                  <th>Chỉ số ID tương ứng</th>
+                  <th>Ghi chú</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>hợp</code></td>
+                  <td>Tìm thấy (Index 4)</td>
+                  <td style="color: var(--cyan); font-weight: bold;">4</td>
+                  <td>Từ thông dụng</td>
+                </tr>
+                <tr>
+                  <td><code>đồng</code></td>
+                  <td>Tìm thấy (Index 5)</td>
+                  <td style="color: var(--cyan); font-weight: bold;">5</td>
+                  <td>Từ thông dụng</td>
+                </tr>
+                <tr>
+                  <td><code>lao</code></td>
+                  <td>Tìm thấy (Index 2)</td>
+                  <td style="color: var(--cyan); font-weight: bold;">2</td>
+                  <td>Từ thông dụng</td>
+                </tr>
+                <tr>
+                  <td><code>động</code></td>
+                  <td>Tìm thấy (Index 3)</td>
+                  <td style="color: var(--cyan); font-weight: bold;">3</td>
+                  <td>Từ thông dụng</td>
+                </tr>
+                <tr>
+                  <td><code>đóng</code></td>
+                  <td>Không tìm thấy (Không thuộc Top 8000 từ)</td>
+                  <td style="color: var(--pink); font-weight: bold;">1</td>
+                  <td>Chuyển thành <code>&lt;UNK&gt;</code></td>
+                </tr>
+                <tr>
+                  <td><code>bảo</code></td>
+                  <td>Tìm thấy (Index 8)</td>
+                  <td style="color: var(--cyan); font-weight: bold;">8</td>
+                  <td>Từ thông dụng</td>
+                </tr>
+                <tr>
+                  <td><code>hiểm</code></td>
+                  <td>Tìm thấy (Index 9)</td>
+                  <td style="color: var(--cyan); font-weight: bold;">9</td>
+                  <td>Từ thông dụng</td>
+                </tr>
+                <tr>
+                  <td><code>thuế_thân</code></td>
+                  <td>Không tìm thấy (Từ hiếm gặp/lạ)</td>
+                  <td style="color: var(--pink); font-weight: bold;">1</td>
+                  <td>Chuyển thành <code>&lt;UNK&gt;</code></td>
+                </tr>
+              </tbody>
+            </table>
+
+            <p style="margin-top: 14px;"><strong>Mã hóa chuỗi ID đầu ra:</strong> <code>[4, 5, 2, 3, 1, 8, 9, 1]</code></p>
+          </div>
+        </section>
+
+        <!-- TRAINING: NEURAL NETWORKS -->
+        <section id="neural-training" class="section-card" style="margin-bottom: 32px;">
+          <h2><span class="num">2.5</span>Huấn Luyện Mô Hình Neural (TextCNN & Siamese BiLSTM)</h2>
+          <p>Trước khi bắt đầu giai đoạn tạo vector đặc trưng cho tài liệu tĩnh, cả hai mạng neural (TextCNN Classifier và Siamese BiLSTM) phải được huấn luyện ngoại tuyến (Offline Training) để tối ưu hóa trọng số nhúng ban đầu từ ma trận <code>embedding.pt</code>.</p>
+          
+          <div class="grid cols-2">
+            <div class="info-box">
+              <h3>1. Huấn Luyện TextCNN (Phân Loại Chủ Đề)</h3>
+              <p>Mô hình tích chập 1D phân loại chủ đề rộng (<code>macro_domain</code>) của câu truy vấn đầu vào.</p>
+              <ul style="margin-left: 20px; font-size: 0.88rem; color: var(--text-muted); list-style-type: disc; margin-top: 8px;">
+                <li><strong>Dữ liệu đầu vào:</strong> Kết hợp trường <code>question</code> + <code>answer</code> (tổng độ dài tối đa 256 tokens) từ bộ dữ liệu QA.</li>
+                <li><strong>Khởi tạo lớp nhúng:</strong> Tải ma trận nhúng <code>[8000, 200]</code> từ Shared Embedding bằng hàm <code>nn.Embedding.from_pretrained(..., freeze=False)</code>.</li>
+                <li><strong>Fine-tuning:</strong> Toàn bộ các vector nhúng sẽ được điều chỉnh (không đóng băng) theo mục tiêu tối ưu hóa F1-macro của nhãn chủ đề pháp lý.</li>
+                <li><strong>Hàm mất mát:</strong> CrossEntropyLoss (kèm kỹ thuật Label Smoothing và trọng số lớp balanced để xử lý lệch dữ liệu).</li>
+              </ul>
+            </div>
+
+            <div class="info-box">
+              <h3>2. Huấn Luyện Siamese BiLSTM (Truy Hồi Ngữ Nghĩa)</h3>
+              <p>Học cách biểu diễn câu hỏi (Query) và điều luật (Passage) vào cùng không gian ngữ nghĩa.</p>
+              <ul style="margin-left: 20px; font-size: 0.88rem; color: var(--text-muted); list-style-type: disc; margin-top: 8px;">
+                <li><strong>Kiến trúc:</strong> Siamese Network chia sẻ trọng số (Share Weight). Hai nhánh BiLSTM độc lập xử lý Query và Document.</li>
+                <li><strong>Khởi tạo lớp nhúng:</strong> Tương tự TextCNN, cả hai nhánh BiLSTM cùng sử dụng chung ma trận <code>[8000, 200]</code> của Shared Embedding và được huấn luyện cập nhật trực tiếp.</li>
+                <li><strong>Hàm mất mát:</strong> Triplet Margin Loss hoặc Contrastive Loss kết hợp với giải thuật **Hard Negative Mining** (tìm các ví dụ đối nghịch khó nhất để huấn luyện mô hình phân biệt tốt hơn).</li>
+              </ul>
+            </div>
+          </div>
+
+          <h3 style="font-family: var(--font-title); font-size: 1.2rem; color: var(--cyan); margin-top: 32px; margin-bottom: 16px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px; vertical-align: middle;"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="10" x2="6" y2="14"></line><line x1="18" y1="10" x2="18" y2="14"></line></svg>
+            Sơ Đồ Chi Tiết Luồng Biến Đổi Tensor Trong Mạng Neural TextCNN (Forward Pass & Training)
+          </h3>
+
+          <div style="display: flex; flex-direction: column; gap: 16px; margin: 24px 0;">
+            
+            <!-- Step 1 -->
+            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; position: relative;">
+              <span style="position: absolute; right: 20px; top: 20px; background: rgba(0, 242, 254, 0.1); color: var(--cyan); font-size: 0.75rem; font-family: var(--font-mono); padding: 4px 8px; border-radius: 4px; font-weight: bold;">Shape: [Batch, 256]</span>
+              <h4 style="font-family: var(--font-title); color: var(--text-bright); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span style="background: var(--cyan); color: var(--bg); width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">1</span>
+                Đầu Vào Chuỗi Số Nguyên (Token IDs & Padding)
+              </h4>
+              <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">Chuỗi văn bản truy vấn hoặc cặp câu hỏi - câu trả lời ghép được chuẩn hóa độ dài để xử lý theo lô (batch processing):</p>
+              <ul style="margin-left: 20px; font-size: 0.88rem; color: var(--text-muted); list-style-type: disc; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+                <li><strong>Tokenization & Indexing:</strong> Sử dụng hàm <code>simple_tokenize</code> để bóc tách từ, sau đó tra cứu trong bảng từ điển <code>stoi</code> để lấy danh sách ID số nguyên tương ứng.</li>
+                <li><strong>Cắt chuỗi (Truncation):</strong> Giới hạn chiều dài đầu vào tối đa là <code>MAX_LEN = 256</code> (độ dài phù hợp với phân loại chủ đề rộng). Nếu chuỗi vượt quá 256 token, các phần phía sau sẽ bị loại bỏ.</li>
+                <li><strong>Bù đệm (Padding):</strong> Nếu chuỗi có độ dài ngắn hơn 256, token đệm <code>&lt;PAD&gt;</code> (ID 0) sẽ được điền liên tiếp vào phía sau cho đến khi Tensor đạt kích thước chính xác là 256.</li>
+              </ul>
+              <div style="background: var(--code-bg); padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text);">
+                Input Tensor `x` &rarr; Shape: `[32, 256]` <span style="color: var(--text-muted); font-style: italic;">(với Batch Size = 32)</span>
+              </div>
+            </div>
+
+            <!-- Arrow -->
+            <div style="text-align: center; color: var(--cyan); font-size: 1.5rem; line-height: 1;">↓</div>
+
+            <!-- Step 2 -->
+            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; position: relative;">
+              <span style="position: absolute; right: 20px; top: 20px; background: rgba(0, 242, 254, 0.1); color: var(--cyan); font-size: 0.75rem; font-family: var(--font-mono); padding: 4px 8px; border-radius: 4px; font-weight: bold;">Shape: [Batch, 256, 200]</span>
+              <h4 style="font-family: var(--font-title); color: var(--text-bright); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span style="background: var(--cyan); color: var(--bg); width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">2</span>
+                Lớp Nhúng Từ Không Đóng Băng (Fine-Tunable Embedding Layer)
+              </h4>
+              <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">Ánh xạ các Token ID số nguyên sang không gian vector thực liên tục:</p>
+              <ul style="margin-left: 20px; font-size: 0.88rem; color: var(--text-muted); list-style-type: disc; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+                <li><strong>Tra cứu ma trận (Embedding Lookup):</strong> Mỗi Token ID được ánh xạ thành một vector thực 200 chiều từ ma trận nhúng $\mathbf{W} \in \mathbb{R}^{V \times 200}$ (tải sẵn từ <code>embedding.pt</code> của Shared Embedding).</li>
+                <li><strong>Huấn luyện cập nhật (Fine-tuning):</strong> Được thiết lập ở chế độ không đóng băng (<code>freeze=False</code>), các vector từ này được tinh chỉnh liên tục trong quá trình huấn luyện nhằm tối ưu hóa khả năng nhận diện các đặc trưng biểu thị ngữ cảnh lớp chủ đề pháp lý.</li>
+                <li><strong>Bỏ qua Padding:</strong> Tham số <code>padding_idx=0</code> được gán để đảm bảo token <code>&lt;PAD&gt;</code> luôn cho ra vector toàn số không $\mathbf{0}$ và không nhận lan truyền ngược gradient.</li>
+              </ul>
+              <div style="background: var(--code-bg); padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text);">
+                Emb Output Tensor &rarr; Shape: `[32, 256, 200]`
+              </div>
+            </div>
+
+            <!-- Arrow -->
+            <div style="text-align: center; color: var(--cyan); font-size: 1.5rem; line-height: 1;">↓</div>
+
+            <!-- Step 3 -->
+            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; position: relative;">
+              <span style="position: absolute; right: 20px; top: 20px; background: rgba(0, 242, 254, 0.1); color: var(--cyan); font-size: 0.75rem; font-family: var(--font-mono); padding: 4px 8px; border-radius: 4px; font-weight: bold;">Shape: [Batch, 200, 256]</span>
+              <h4 style="font-family: var(--font-title); color: var(--text-bright); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span style="background: var(--cyan); color: var(--bg); width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">3</span>
+                Hoán Vị Kênh Đầu Vào (Channel Transposition for Conv1d)
+              </h4>
+              <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">Chuyển vị ma trận đặc trưng phù hợp với quy chuẩn đầu vào lớp tích chập một chiều của PyTorch:</p>
+              <ul style="margin-left: 20px; font-size: 0.88rem; color: var(--text-muted); list-style-type: disc; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+                <li><strong>Định dạng yêu cầu:</strong> Hàm tích chập 1D (<code>nn.Conv1d</code>) yêu cầu dữ liệu có dạng <code>[Batch, Channels, Length]</code>. Trong đó, số chiều đặc trưng nhúng (Embedding Dim = 200) đóng vai trò làm số kênh (Channels), còn độ dài câu (Sequence Length = 256) là chiều thời gian (Length).</li>
+                <li><strong>Phép hoán vị chiều:</strong> Thực hiện chuyển vị chiều thứ 1 và thứ 2 của Tensor đầu ra lớp nhúng từ <code>[Batch, 256, 200]</code> thành <code>[Batch, 200, 256]</code>.</li>
+              </ul>
+              <div style="background: var(--code-bg); padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text);">
+                Code: `x = emb.transpose(1, 2)` &rarr; Shape: `[32, 200, 256]`
+              </div>
+            </div>
+
+            <!-- Arrow -->
+            <div style="text-align: center; color: var(--cyan); font-size: 1.5rem; line-height: 1;">↓</div>
+
+            <!-- Step 4 -->
+            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; position: relative;">
+              <span style="position: absolute; right: 20px; top: 20px; background: rgba(0, 242, 254, 0.1); color: var(--cyan); font-size: 0.75rem; font-family: var(--font-mono); padding: 4px 8px; border-radius: 4px; font-weight: bold;">Shape: [Batch, 128, 256 - K + 1]</span>
+              <h4 style="font-family: var(--font-title); color: var(--text-bright); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span style="background: var(--cyan); color: var(--bg); width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">4</span>
+                Bộ Lọc Tích Chập Tự Động Trích Xuất N-Grams (Multi-Scale 1D Convolutions with ReLU)
+              </h4>
+              <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">Trích xuất các đặc trưng cụm từ cục bộ (local features/N-grams) ở nhiều tỷ lệ khác nhau:</p>
+              <ul style="margin-left: 20px; font-size: 0.88rem; color: var(--text-muted); list-style-type: disc; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+                <li><strong>Cơ chế tích chập song song:</strong> Dữ liệu được đẩy qua song song 4 bộ lọc tích chập có kích thước nhân (kernel sizes) khác nhau $K \in \{2, 3, 4, 5\}$, tương ứng với việc trích xuất thông tin của các cụm 2-gram, 3-gram, 4-gram và 5-gram liền kề.</li>
+                <li><strong>Tích luỹ đặc trưng:</strong> Mỗi kích thước nhân tích chập sở hữu <code>num_filters = 128</code> bộ lọc độc lập để học các mẫu đặc trưng ngữ nghĩa cục bộ khác nhau.</li>
+                <li><strong>Kích hoạt phi tuyến:</strong> Sau tích chập, Tensor được dẫn qua hàm kích hoạt tuyến tính chỉnh lưu ReLU để đưa các quan hệ phi tuyến vào mô hình.</li>
+              </ul>
+              <div class="formula-container" style="margin: 10px 0; padding: 10px;">
+                <div class="math" style="font-size: 1.1rem;">
+                  $$c_K = \text{ReLU}(\text{Conv1d}_K(x))$$
+                </div>
+              </div>
+              <ul style="margin-left: 20px; font-size: 0.88rem; color: var(--text-muted); list-style-type: disc;">
+                <li>Với $K=2$: Output Shape = `[32, 128, 255]`</li>
+                <li>Với $K=3$: Output Shape = `[32, 128, 254]`</li>
+                <li>Với $K=4$: Output Shape = `[32, 128, 253]`</li>
+                <li>Với $K=5$: Output Shape = `[32, 128, 252]`</li>
+              </ul>
+
+              <!-- Chi tiết biến đổi kích thước ma trận (Trước & Sau khi qua filter) -->
+              <div style="margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--border);">
+                <span style="font-size: 0.82rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--cyan); display: block; margin-bottom: 8px;">Chi Tiết Biến Đổi Kích Thước Ma Trận (Ví dụ với K=2, Batch=32)</span>
+                <div style="background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.03); padding: 16px; border-radius: 6px; margin: 10px 0;">
+                  <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-bright); display: block; margin-bottom: 8px;">Lớp Tích Chập 1D (nn.Conv1d) trong mạng TextCNN:</span>
+                  <ul style="margin-left: 18px; font-size: 0.85rem; color: var(--text-muted); list-style-type: circle; display: flex; flex-direction: column; gap: 6px;">
+                    <li><strong>Trước filter:</strong> Tensor đầu vào có kích thước <code>[Batch, in_channels, sequence_length]</code> &rarr; <code>[32, 200, 256]</code>.</li>
+                    <li><strong>Bộ lọc (Filter):</strong> Có 128 filter hoạt động song song, mỗi filter có trọng số (weight) kích thước <code>[200, 2]</code>.</li>
+                    <li><strong>Cơ chế trượt:</strong> Trượt theo chiều dài câu (sequence length = 256) với bước trượt stride=1, tạo ra số vị trí trượt: $256 - 2 + 1 = 255$.</li>
+                    <li><strong>Sau filter:</strong> Tensor đầu ra thu được có kích thước <code>[Batch, out_channels, L_out]</code> &rarr; <code>[32, 128, 255]</code>.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <!-- Arrow -->
+            <div style="text-align: center; color: var(--cyan); font-size: 1.5rem; line-height: 1;">↓</div>
+
+            <!-- Step 5 -->
+            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; position: relative;">
+              <span style="position: absolute; right: 20px; top: 20px; background: rgba(0, 242, 254, 0.1); color: var(--cyan); font-size: 0.75rem; font-family: var(--font-mono); padding: 4px 8px; border-radius: 4px; font-weight: bold;">Shape: [Batch, 128]</span>
+              <h4 style="font-family: var(--font-title); color: var(--text-bright); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span style="background: var(--cyan); color: var(--bg); width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">5</span>
+                Gom Cực Đại Chọn Lọc Đặc Trưng Nổi Bật (Max-Over-Time Pooling)
+              </h4>
+              <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">Trích xuất đặc trưng có cường độ tín hiệu mạnh nhất trên toàn bộ chiều dài chuỗi câu:</p>
+              <ul style="margin-left: 20px; font-size: 0.88rem; color: var(--text-muted); list-style-type: disc; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+                <li><strong>Cách thức hoạt động:</strong> Lớp <code>Max-Pool1d</code> với kích thước cửa sổ quét bằng đúng chiều dài đầu ra của bản đồ đặc trưng tương ứng ($L_{out} = 256 - K + 1$, tức là <code>kernel_size = feat.shape[-1]</code>) sẽ lọc ra giá trị số thực lớn nhất.</li>
+                <li><strong>Ý nghĩa kỹ thuật:</strong> Giúp mô hình bắt được sự xuất hiện của các cụm từ mấu chốt quyết định lớp chủ đề (ví dụ: cụm từ <i>"bảo hiểm"</i>, <i>"thuế đăng ký"</i>) tại bất kỳ vị trí nào trong văn bản, đồng thời nén toàn bộ thông tin chuỗi thời gian về một vector có chiều dài cố định là 128 cho mỗi nhân tích chập.</li>
+              </ul>
+              <div class="formula-container" style="margin: 10px 0; padding: 10px;">
+                <div class="math" style="font-size: 1.1rem;">
+                  $$p_K = \text{Max-Pool1d}(c_K)$$
+                </div>
+              </div>
+              <p style="font-size: 0.9rem; color: var(--text-muted);">Kết quả sau Pooling thu được một Tensor kích thước: `[32, 128]` cho mỗi kích thước nhân $K$ (đã loại bỏ chiều cuối qua phép toán `.squeeze(-1)`).</p>
+            </div>
+
+            <!-- Arrow -->
+            <div style="text-align: center; color: var(--cyan); font-size: 1.5rem; line-height: 1;">↓</div>
+
+            <!-- Step 6 -->
+            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; position: relative;">
+              <span style="position: absolute; right: 20px; top: 20px; background: rgba(0, 242, 254, 0.1); color: var(--cyan); font-size: 0.75rem; font-family: var(--font-mono); padding: 4px 8px; border-radius: 4px; font-weight: bold;">Shape: [Batch, 512]</span>
+              <h4 style="font-family: var(--font-title); color: var(--text-bright); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span style="background: var(--cyan); color: var(--bg); width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">6</span>
+                Ghép Nối Đặc Trưng Đa Cửa Sổ & Dropout (Concat & Dropout)
+              </h4>
+              <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">Tổng hợp thông tin đa tầng N-grams và tăng tính bền vững của các biểu diễn đặc trưng:</p>
+              <ul style="margin-left: 20px; font-size: 0.88rem; color: var(--text-muted); list-style-type: disc; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+                <li><strong>Ghép nối (Concatenation):</strong> Ghép song song 4 vector pooling của 4 cửa sổ lọc ($K \in \{2,3,4,5\}$) dọc theo chiều đặc trưng <code>dim=1</code>. Kết quả tạo thành một vector tổng hợp duy nhất có kích thước $128 \times 4 = 512$ chiều.</li>
+                <li><strong>Dropout Chống Quá Khớp (Regularization):</strong> Trong pha huấn luyện, áp dụng lớp Dropout với tỷ lệ <code>0.5</code>. Ngẫu nhiên gán 50% số chiều trong vector đặc trưng về 0 để bắt buộc các thành phần mạng còn lại tự học cách biểu diễn đặc tính chủ đề một cách độc lập, giảm thiểu hiện tượng phụ thuộc chéo (co-dependency).</li>
+              </ul>
+              <div style="background: var(--code-bg); padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text); margin-bottom: 8px;">
+                Concat Tensor: `x_cat = torch.cat([p_2, p_3, p_4, p_5], dim=1)` &rarr; Shape: `[32, 512]`
+              </div>
+            </div>
+
+            <!-- Arrow -->
+            <div style="text-align: center; color: var(--cyan); font-size: 1.5rem; line-height: 1;">↓</div>
+
+            <!-- Step 7 -->
+            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; position: relative;">
+              <span style="position: absolute; right: 20px; top: 20px; background: rgba(0, 242, 254, 0.1); color: var(--cyan); font-size: 0.75rem; font-family: var(--font-mono); padding: 4px 8px; border-radius: 4px; font-weight: bold;">Shape: [Batch, Num Classes]</span>
+              <h4 style="font-family: var(--font-title); color: var(--text-bright); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span style="background: var(--cyan); color: var(--bg); width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">7</span>
+                Chiếu Tuyến Tính Lớp & Hàm Mất Mát (Linear Projection & Loss Function)
+              </h4>
+              <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">Nhận vector đặc trưng tổng hợp 512 chiều (sau khi ghép nối và dropout ở Bước 6) làm đầu vào, thực hiện chiếu tuyến tính về không gian nhãn và tính toán mất mát:</p>
+              <ul style="margin-left: 20px; font-size: 0.88rem; color: var(--text-muted); list-style-type: disc; margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px;">
+                <li>
+                  <strong>Kết nối đầu vào từ Bước 6 (Input Transition):</strong> Vector 512 chiều $\mathbf{x}_{dropout}$ (đầu ra của lớp Dropout ở Bước 6) chứa đựng toàn bộ các đặc trưng cụm từ N-grams đa tầng đã trích xuất. Lớp tuyến tính <code>nn.Linear(512, 6)</code> sẽ trực tiếp tiếp nhận vector này làm đầu vào.
+                </li>
+                <li>
+                  <strong>Phép nhân ma trận FC (Linear Projection):</strong> Thực hiện phép biến đổi affine để ánh xạ toàn bộ 512 đặc trưng ngữ nghĩa sang 6 điểm số tương ứng với 6 lớp chủ đề pháp luật:
+                  <div class="formula-container" style="margin: 8px 0; padding: 8px;">
+                    <div class="math" style="font-size: 1rem;">
+                      $$\mathbf{z} = \mathbf{x}_{dropout} \cdot \mathbf{W}_{FC}^T + \mathbf{b}_{FC}$$
+                    </div>
+                  </div>
+                  Trong đó ma trận trọng số $\mathbf{W}_{FC}$ có kích thước <code>[6, 512]</code> (mỗi hàng đại diện cho vector trọng số tối ưu của một lớp chủ đề) và vector độ lệch $\mathbf{b}_{FC}$ kích thước <code>[6]</code>. Kết quả đầu ra $\mathbf{z}$ là vector <strong>Logits thô (unnormalized scores)</strong> kích thước <code>[32, 6]</code>.
+                </li>
+                <li>
+                  <strong>Xác suất lớp (Inference - Softmax):</strong> Trong pha suy luận truy hồi thời gian thực, Logits thô được đưa qua hàm <code>Softmax</code> để tính phân phối xác suất phân loại chuẩn hóa (tổng xác suất 6 lớp bằng đúng 1.0):
+                  <div class="formula-container" style="margin: 8px 0; padding: 8px;">
+                    <div class="math" style="font-size: 1rem;">
+                      $$P(y_i = c \mid \mathbf{x}_i) = \frac{e^{z_{i, c}}}{\sum_{j=1}^{6} e^{z_{i, j}}}$$
+                    </div>
+                  </div>
+                  Xác suất này được hệ thống sử dụng để lấy Top-k chủ đề có độ tin cậy cao nhất làm bộ lọc ứng viên luật.
+                </li>
+                <li>
+                  <strong>Làm mịn nhãn (Label Smoothing = 0.05):</strong> Để tránh việc mô hình dự đoán quá tự tin (gây ra quá khớp), nhãn One-hot đích được làm mịn bằng cách chia bớt 5% xác suất cho các lớp khác.
+                  <br>Ví dụ: Nhãn One-hot của lớp thứ 2 là <code>[0, 1, 0, 0, 0, 0]</code> được biến đổi thành phân phối nhãn mịn:
+                  <br><code style="color: var(--cyan);">[0.00833, 0.95833, 0.00833, 0.00833, 0.00833, 0.00833]</code>.
+                </li>
+                <li>
+                  <strong>Trọng số lớp cân bằng (Class Weights):</strong> Nhằm xử lý hiện tượng lệch dữ liệu (một số chủ đề có rất nhiều tài liệu trong khi số khác rất ít), hàm mất mát Entropy chéo được điều chỉnh trọng số lớp $w_c$ tỉ lệ nghịch với tần số lớp:
+                  <div class="formula-container" style="margin: 8px 0; padding: 8px;">
+                    <div class="math" style="font-size: 1rem;">
+                      $$\mathcal{L} = - \sum_{c=1}^{6} w_c \cdot y_c^{smoothed} \log(P(y = c))$$
+                    </div>
+                  </div>
+                  Các gradient lỗi được lan truyền ngược để cập nhật trọng số toàn bộ mạng, bao gồm cả ma trận Embedding của Shared Embedding.
+                </li>
+              </ul>
+              <div style="background: var(--code-bg); padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text); margin-bottom: 8px;">
+                Logits output: `logits = self.fc(x_dropout)` &rarr; Shape: `[32, 6]`
+              </div>
+            </div>
+
+          </div>
+
+          <div class="info-box" style="margin: 20px 0; border-left: 4px solid var(--purple); background: rgba(139, 92, 246, 0.02); border-color: var(--purple);">
+            <h3 style="color: var(--purple); font-size: 1.05rem; display: flex; align-items: center; gap: 8px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><path d="M16 18L22 12L16 6M8 6L2 12L8 18"></path></svg>
+              Ánh Xạ Thực Tế Trong Mã Nguồn (Codebase Mapping)
+            </h3>
+            <p style="font-size: 0.9rem; margin-top: 8px; margin-bottom: 0; color: var(--text-muted);">
+              <strong>1. Huấn luyện TextCNN:</strong>
+              <br>&bull; <strong>Notebook chạy:</strong> <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/pipeline_v1.3/train-textcnn.ipynb"><code>pipeline_v1.3/train-textcnn.ipynb</code></a> (hoặc tệp thử nghiệm so sánh <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/pipeline_v1.3/train-textcnn-ablation.ipynb"><code>train-textcnn-ablation.ipynb</code></a>).
+              <br>&bull; <strong>Tệp trọng số đầu ra:</strong> <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/pipeline_v1.3/textcnn_artifacts_v1_3/textcnn_best.pt"><code>textcnn_best.pt</code></a>.
+              <br><br>
+              <strong>2. Huấn luyện Siamese BiLSTM:</strong>
+              <br>&bull; <strong>Notebook chạy:</strong> <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/pipeline_v1.3/train-siamese-bilstm-1L.ipynb"><code>pipeline_v1.3/train-siamese-bilstm-1L.ipynb</code></a> (1 layer) hoặc <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/pipeline_v1.3/train-siamese-bilstm-2L.ipynb"><code>train-siamese-bilstm-2L.ipynb</code></a> (2 layers).
+              <br>&bull; <strong>Tệp trọng số đầu ra:</strong> Các tệp trọng số có hậu tố <code>*_best.pt</code> lưu trong thư mục artifacts tương ứng.
+            </p>
+          </div>
+
+          <h3 style="font-family: var(--font-title); font-size: 1.2rem; color: var(--cyan); margin-top: 32px; margin-bottom: 16px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px; vertical-align: middle;"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="10" x2="6" y2="14"></line><line x1="18" y1="10" x2="18" y2="14"></line></svg>
+            Sơ Đồ Chi Tiết Luồng Xử Lý Tensor Trong Mạng Neural BiLSTM (Cấu Hình 2-Layer BiLSTM)
+          </h3>
+
+          <div style="display: flex; flex-direction: column; gap: 16px; margin: 24px 0;">
+
+            <!-- Step 1 -->
+            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; position: relative;">
+              <span style="position: absolute; right: 20px; top: 20px; background: rgba(0, 242, 254, 0.1); color: var(--cyan); font-size: 0.75rem; font-family: var(--font-mono); padding: 4px 8px; border-radius: 4px; font-weight: bold;">Shape: [Batch, 256]</span>
+              <h4 style="font-family: var(--font-title); color: var(--text-bright); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span style="background: var(--cyan); color: var(--bg); width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">1</span>
+                Đầu Vào Chuỗi Số Nguyên & Mặt Nạ (Token IDs & Attention Mask)
+              </h4>
+              <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">Chuỗi câu hỏi truy vấn (Query) hoặc đoạn văn luật (Document) được chuẩn hóa chiều dài cố định và sinh mặt nạ nhị phân:</p>
+              <ul style="margin-left: 20px; font-size: 0.88rem; color: var(--text-muted); list-style-type: disc; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+                <li><strong>Tokenization & Indexing:</strong> Tách từ và tra cứu bảng từ vựng để lấy danh sách ID số nguyên tương ứng.</li>
+                <li><strong>Cắt/Bù đệm (Padding/Truncation):</strong> Đưa chuỗi về độ dài chính xác là <code>MAX_LEN = 256</code>. Token đệm <code>&lt;PAD&gt;</code> dùng ID 0.</li>
+                <li><strong>Attention Mask:</strong> Tạo tensor mặt nạ nhị phân kích thước <code>[Batch, 256]</code> chứa giá trị $1.0$ cho từ thực và $0.0$ cho token đệm <code>&lt;PAD&gt;</code> để lọc bỏ nhiễu đệm khi pooling.</li>
+              </ul>
+              <div style="background: var(--code-bg); padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text);">
+                Input Tensor `x` &rarr; Shape: `[Batch, 256]` | Mask Tensor &rarr; Shape: `[Batch, 256]`
+              </div>
+            </div>
+
+            <!-- Arrow -->
+            <div style="text-align: center; color: var(--cyan); font-size: 1.5rem; line-height: 1;">↓</div>
+
+            <!-- Step 2 -->
+            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; position: relative;">
+              <span style="position: absolute; right: 20px; top: 20px; background: rgba(0, 242, 254, 0.1); color: var(--cyan); font-size: 0.75rem; font-family: var(--font-mono); padding: 4px 8px; border-radius: 4px; font-weight: bold;">Shape: [Batch, 256, 200]</span>
+              <h4 style="font-family: var(--font-title); color: var(--text-bright); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span style="background: var(--cyan); color: var(--bg); width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">2</span>
+                Lớp Nhúng Từ (Embedding Layer)
+              </h4>
+              <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">Tra cứu ma trận Embedding trọng số liên tục. Mỗi mã từ ID được chuyển đổi thành một vector số thực liên tục có kích thước <code>embed_dim = 200</code> chiều chứa thông tin ngữ nghĩa ẩn của từ. Cơ chế cụ thể hoạt động như sau:</p>
+              
+              <ul style="margin-left: 20px; font-size: 0.88rem; color: var(--text-muted); list-style-type: disc; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+                <li><strong>Cấu trúc Ma trận Nhúng $\mathbf{W}$:</strong> Là bảng trọng số kích thước <code>[8000, 200]</code> (8,000 từ khóa tương ứng với 8,000 hàng, mỗi hàng chứa vector số thực 200 chiều).</li>
+                <li><strong>Phép tra cứu (Lookup):</strong> Khi đưa ID $i$ vào (ví dụ: ID 4 cho từ <code>"hợp"</code>), lớp này thực hiện tra cứu trực tiếp lấy dòng thứ $i$ của ma trận $\mathbf{W}$ với độ phức tạp $O(1)$, tương đương phép nhân toán học giữa vector One-hot $\mathbf{e}_i$ và ma trận $\mathbf{W}$.</li>
+                <li><strong>Ý nghĩa các con số:</strong> 200 chiều thực số không được gán tay mà được học tự động (hoặc lấy từ PhoW2V học sẵn). Các từ đồng nghĩa hoặc hay đi cùng ngữ cảnh (ví dụ: <code>"hợp"</code> và <code>"đồng"</code>) sẽ có các giá trị vector gần nhau, giúp mô hình nắm bắt quan hệ ngữ nghĩa ẩn.</li>
+              </ul>
+
+              <div style="background: var(--code-bg); padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text); margin-bottom: 12px;">
+                Token ID 4 ("hợp") &rarr; Hàng thứ 4 của ma trận W &rarr; [-0.08, 0.33, ..., 0.12] <span style="color: var(--text-muted); font-style: italic;">(vector 200 chiều)</span>
+              </div>
+
+              <div style="border-top: 1px dashed var(--border); padding-top: 12px; font-size: 0.88rem; color: var(--text-muted);">
+                <strong>Ánh Xạ Thực Tế Trong Mã Nguồn:</strong>
+                <br>&bull; Ma trận nhúng ban đầu được cấp phát ô nhớ và gán phân phối chuẩn với kích thước <code>[8000, 200]</code> thông qua hàm <code>torch.empty</code> và <code>nn.init.normal_</code> trong tệp <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/pipeline_v1.3/build_shared_embedding.py"><code>pipeline_v1.3/build_shared_embedding.py</code></a>.
+                <br>&bull; Trọng số Embedding ban đầu này được lưu trữ thành tệp nhị phân PyTorch <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/pipeline_v1.3/shared_embedding_artifacts/embedding.pt"><code>embedding.pt</code></a> để nạp vào Embedding Layer khi bắt đầu huấn luyện BiLSTM/TextCNN.
+              </div>
+            </div>
+
+            <!-- Arrow -->
+            <div style="text-align: center; color: var(--cyan); font-size: 1.5rem; line-height: 1;">↓</div>
+
+            <!-- Step 3 -->
+            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; position: relative;">
+              <span style="position: absolute; right: 20px; top: 20px; background: rgba(0, 242, 254, 0.1); color: var(--cyan); font-size: 0.75rem; font-family: var(--font-mono); padding: 4px 8px; border-radius: 4px; font-weight: bold;">Shape: [Batch, 256, 510]</span>
+              <h4 style="font-family: var(--font-title); color: var(--text-bright); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span style="background: var(--cyan); color: var(--bg); width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">3</span>
+                Lớp LSTM Hai Chiều Hai Lớp (2-Layer Bidirectional LSTM Layer)
+              </h4>
+              <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">Chuỗi vector nhúng 256 từ đi qua mạng nơ-ron BiLSTM cấu hình 2 lớp xếp chồng (<code>num_layers = 2</code>, <code>dropout = 0.3</code>) để mô hình hóa các mức độ ngữ nghĩa sâu sắc:</p>
+              
+              <ul style="margin-left: 20px; font-size: 0.88rem; color: var(--text-muted); list-style-type: disc; margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px;">
+                <li>
+                  <strong>Tầng BiLSTM 1 (Layer 1):</strong> Tiếp nhận đầu vào là chuỗi nhúng `[Batch, 256, 200]`. Tại mỗi bước thời gian $t$:
+                  <br>- Nhánh Forward LSTM quét từ trái qua phải, tính trạng thái ẩn $\vec{h}_t^{(1)} \in \mathbb{R}^{255}$.
+                  <br>- Nhánh Backward LSTM quét từ phải qua trái, tính trạng thái ẩn $\overleftarrow{h}_t^{(1)} \in \mathbb{R}^{255}$.
+                  <br>- Kết nối (Concatenate) chiều xuôi và ngược dọc theo kênh đặc trưng: $h_t^{(1)} = [\vec{h}_t^{(1)} ; \overleftarrow{h}_t^{(1)}] \in \mathbb{R}^{510}$. Kết quả tầng 1 có shape: `[Batch, 256, 510]`.
+                </li>
+                <li>
+                  <strong>Lớp Dropout xen kẽ (0.3):</strong> Áp dụng Dropout với tỷ lệ 30% giữa 2 lớp LSTM (chỉ hoạt động khi huấn luyện) để triệt tiêu ngẫu nhiên các mối liên kết chéo, chống quá khớp. Kích thước Tensor vẫn giữ nguyên `[Batch, 256, 510]`.
+                </li>
+                <li>
+                  <strong>Tầng BiLSTM 2 (Layer 2):</strong> Tiếp nhận Tensor đã qua dropout. Tại đây, lớp tích lũy bối cảnh thứ 2 tiếp tục tính toán các trạng thái ẩn $\vec{h}_t^{(2)} \in \mathbb{R}^{255}$ và $\overleftarrow{h}_t^{(2)} \in \mathbb{R}^{255}$ rồi ghép nối chúng lại: $h_t^{(2)} = [\vec{h}_t^{(2)} ; \overleftarrow{h}_t^{(2)}] \in \mathbb{R}^{510}$.
+                  <br>Đầu ra cuối cùng của chuỗi là Tensor <code>out</code> kích thước: `[Batch, 256, 510]`.
+                </li>
+              </ul>
+            </div>
+
+            <!-- Arrow -->
+            <div style="text-align: center; color: var(--cyan); font-size: 1.5rem; line-height: 1;">↓</div>
+
+            <!-- Step 4 -->
+            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; position: relative;">
+              <span style="position: absolute; right: 20px; top: 20px; background: rgba(0, 242, 254, 0.1); color: var(--cyan); font-size: 0.75rem; font-family: var(--font-mono); padding: 4px 8px; border-radius: 4px; font-weight: bold;">Shape: [Batch, 510]</span>
+              <h4 style="font-family: var(--font-title); color: var(--text-bright); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span style="background: var(--cyan); color: var(--bg); width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">4</span>
+                Gom Trung Bình Có Mặt Nạ (Masked Mean Pooling)
+              </h4>
+              <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">Sau bước BiLSTM, ta có ma trận kích thước <code>[256, 510]</code> của cả chuỗi. Ta cần gom (Pool) thành một vector đại diện duy nhất <code>[510]</code> cho cả văn bản:</p>
+              
+              <ul style="margin-left: 20px; font-size: 0.88rem; color: var(--text-muted); list-style-type: disc; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+                <li><strong>Tại sao cần Pooling?</strong> Giúp giảm chiều dữ liệu từ chuỗi nhiều từ về một vector ngữ nghĩa cố định duy nhất đại diện cho cả câu hỏi hoặc cả đoạn văn bản luật.</li>
+                <li><strong>Vấn đề của Padding:</strong> Các token đệm <code>&lt;PAD&gt;</code> vô nghĩa ở Bước 1 vẫn sinh ra các vector ẩn rác qua LSTM. Nếu lấy trung bình cộng đơn thuần của cả 256 bước, thông tin rác từ các token đệm này sẽ làm loãng và sai lệch ngữ nghĩa thực của câu.</li>
+                <li><strong>Cơ chế Masked Pooling:</strong> Sử dụng mặt nạ nhúng <code>Attention Mask</code> (giá trị $1.0$ cho từ thực tế, $0.0$ cho <code>&lt;PAD&gt;</code>). Hệ thống nhân các trạng thái ẩn với mask tương ứng để triệt tiêu vector rác về $0$, rồi chỉ chia cho tổng số lượng từ thực tế (tức là tổng của Mask) thay vì chia cho 256.</li>
+              </ul>
+
+              <div class="formula-container" style="margin: 10px 0; padding: 10px;">
+                <div class="math" style="font-size: 1.1rem;">
+                  $$h_{pooled} = \frac{\sum_{t=1}^{T} (h_t \cdot \text{mask}_t)}{\sum_{t=1}^{T} \text{mask}_t}$$
+                </div>
+              </div>
+            </div>
+
+            <!-- Arrow -->
+            <div style="text-align: center; color: var(--cyan); font-size: 1.5rem; line-height: 1;">↓</div>
+
+            <!-- Step 5 -->
+            <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; position: relative;">
+              <span style="position: absolute; right: 20px; top: 20px; background: rgba(0, 242, 254, 0.1); color: var(--cyan); font-size: 0.75rem; font-family: var(--font-mono); padding: 4px 8px; border-radius: 4px; font-weight: bold;">Shape: [Batch, 510]</span>
+              <h4 style="font-family: var(--font-title); color: var(--text-bright); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span style="background: var(--cyan); color: var(--bg); width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: bold;">5</span>
+                Chuẩn Hóa L2 (L2 Normalization)
+              </h4>
+              <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px;">Biến đổi vector biểu diễn cuối cùng về cùng một phạm vi hình học chuẩn để phục vụ việc chấm điểm tương tự:</p>
+              
+              <ul style="margin-left: 20px; font-size: 0.88rem; color: var(--text-muted); list-style-type: disc; margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px;">
+                <li><strong>Cách thực hiện:</strong> Chia vector nhúng $h_{pooled}$ cho độ dài hình học Euclid (L2 Norm) của chính nó. Kết quả thu được là vector có độ dài hình học bằng đúng $1.0$ ($v_1^2 + v_2^2 + \dots + v_{510}^2 = 1.0$).</li>
+                <li><strong>Tối giản Cosine Similarity thành Tích vô hướng (Dot Product):</strong> Khi các vector đều có độ dài chuẩn hóa là 1, phép tính độ tương tự Cosine giữa hai vector bất kỳ $\mathbf{a}$ và $\mathbf{b}$ được tối giản thành phép nhân tích vô hướng trực tiếp:
+                  $$\text{Similarity}(\mathbf{a}, \mathbf{b}) = \mathbf{a} \cdot \mathbf{b} = \sum a_i b_i$$
+                  Nhờ vậy, quá trình tìm kiếm truy hồi trên hàng vạn văn bản diễn ra cực nhanh bằng một phép nhân ma trận song song (chỉ mất dưới 1 mili-giây).
+                </li>
+                <li><strong>Loại bỏ ảnh hưởng của độ dài văn bản (Magnitude Independence):</strong> Triệt tiêu sự khác biệt về độ dài/độ lớn của câu hay đoạn văn thô, bắt buộc mô hình chỉ so sánh hướng (góc) ngữ nghĩa thực tế của hai vector.</li>
+                <li><strong>Ổn định huấn luyện Triplet Margin Loss:</strong> Việc đưa vector về bề mặt hình cầu đơn vị giúp giới hạn khoảng cách Cosine trong đoạn $[0, 2]$, ngăn chặn hiện tượng bùng nổ gradient và giúp tham số <code>margin</code> tối ưu hóa ổn định, hiệu quả.</li>
+              </ul>
+
+              <div class="formula-container" style="margin: 10px 0; padding: 10px;">
+                <div class="math" style="font-size: 1.1rem;">
+                  $$v_{dense} = \frac{h_{pooled}}{\|h_{pooled}\|_2}$$
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="example-panel">
+            <h4><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg> Chuyển Đổi Thực Tế (Tài Liệu 0)</h4>
+            <p><strong>Văn bản:</strong> "Hợp đồng lao động..."</p>
+            <p><strong>Vector Sparse (TF-IDF):</strong> <code>[0.32, 0.32, 0.15, 0.15, 0.00, 0.00, 0.45, 0.45, ...]</code> (Ma trận thưa có số chiều tối đa 200,000)</p>
+            <p><strong>Mã hóa số nguyên đầu vào Dense:</strong> <code>[4, 5, 2, 3, ...]</code> đệm thêm 0 cho đủ chiều dài 256.</p>
+            <p><strong>Mặt nạ nhúng (Attention Mask):</strong> <code>[1.0, 1.0, 1.0, 1.0, ..., 0.0, 0.0]</code> (Để lọc bỏ phần đệm khi tính trung bình).</p>
+            <p><strong>Vector Dense Đầu Ra (510D):</strong> <code>[-0.045, 0.112, 0.089, ..., -0.012]</code> (Đã chuẩn hóa L2, độ dài vector bằng 1.0)</p>
+          </div>
+        </section>
+
+
+
+        <!-- B4: STORE & INDEX -->
+        <section id="step4-indexing" class="section-card" style="margin-bottom: 12px;">
+          <h2><span class="num">4</span>Bước 4: Lưu Trữ Cấu Trúc Chỉ Mục Trên Bộ Nhớ Cache</h2>
+          <p>Tất cả các kết quả tính toán thô tĩnh được lưu trữ tập trung trên RAM để phục vụ trực tiếp cho các phép toán tìm kiếm tương tự thời gian thực:</p>
+
+          <div class="example-panel">
+            <h4><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg> Cấu Trúc Chỉ Mục Đang Lưu Trữ</h4>
+            <ul style="margin-left: 20px; list-style-type: square;">
+              <li style="margin-bottom: 6px;"><strong>tfidf_matrix:</strong> Ma trận CSR chứa 3 vector TF-IDF tương ứng với 3 tài liệu.</li>
+              <li style="margin-bottom: 6px;"><strong>doc_embeddings:</strong> Mảng NumPy lưu ma trận kích thước <code>[3, 510]</code> chứa 3 vector Dense của 3 tài liệu.</li>
+              <li style="margin-bottom: 6px;"><strong>label_to_indices:</strong> Bảng ánh xạ chủ đề lọc ứng viên:
+                <pre style="margin-top: 6px; background: var(--code-bg); padding: 8px; border-radius: 4px; color: var(--cyan); font-family: var(--font-mono); font-size: 0.85rem;">{
+  "Lao dong": array([0, 1]),
+  "Doanh nghiep": array([2])
+}</pre>
+              </li>
+            </ul>
+          <div style="border-top: 1px dashed var(--border); padding-top: 12px; margin-top: 16px; font-size: 0.88rem; color: var(--text-muted);">
+            <strong>Ánh Xạ Thực Tế Trong Mã Nguồn:</strong>
+            <br>&bull; Lớp điều khiển chính <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/src/pipeline.py"><code>RetrievalPipeline</code></a> nạp và giữ các chỉ mục tĩnh này trên bộ nhớ RAM khi được khởi tạo thông qua phương thức <code>RetrievalPipeline.from_config</code> (các dòng 153-203).
+          </div>
+        </section>
+      </div>
+
+      <!-- PART B: QUERY-TIME / ONLINE -->
+      <div style="border-left: 2px solid var(--pink); padding-left: 16px; margin-top: 16px;">
+        <h3 style="font-family: var(--font-title); font-size: 1.4rem; color: var(--pink); margin-bottom: 24px; text-transform: uppercase; letter-spacing: 1px;">Phần B. Giai Đoạn Tiếp Nhận Truy Vấn & Truy Hồi Thời Gian Thực (Online / Query-Time)</h3>
+
+        <!-- B5: QUERY RECEIVE -->
+        <section id="step5-query" class="section-card" style="margin-bottom: 32px;">
+          <h2><span class="num">5</span>Bước 5: Tiếp Nhận Truy Vấn & Phân Tách Từ</h2>
+          <p>Người dùng gửi câu hỏi truy vấn đến hệ thống thông qua giao diện hoặc API. Hệ thống tiếp nhận chuỗi ký tự và áp dụng lại chính xác quy trình tách từ của Bước 2 để đảm bảo tính nhất quán từ điển.</p>
+
+          <div class="example-panel">
+            <h4><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg> Dòng Chảy Xử Lý Dữ Liệu Đầu Vào</h4>
+            <p><strong>Chuỗi truy vấn:</strong> "Hợp đồng lao động thời vụ có phải đóng bảo hiểm xã hội không?"</p>
+            <p><strong>Tokens phân tách:</strong> <code>['hợp', 'đồng', 'lao', 'động', 'thời', 'vụ', 'có', 'phải', 'đóng', 'bảo', 'hiểm', 'xã', 'hội', 'không']</code></p>
+          <div style="border-top: 1px dashed var(--border); padding-top: 12px; margin-top: 16px; font-size: 0.88rem; color: var(--text-muted);">
+            <strong>Ánh Xạ Thực Tế Trong Mã Nguồn:</strong>
+            <br>&bull; Nhận câu hỏi và điều phối quá trình trích xuất từ được thực hiện ở các hàm công khai của <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/src/pipeline.py"><code>RetrievalPipeline</code></a> (như <code>retrieve_hybrid_textcnn</code>).
+            <br>&bull; Việc tiền xử lý và tách từ (Tokenize) trực tiếp cho câu hỏi của người dùng sử dụng hàm <code>encode_text</code> hoặc <code>encode_with_mask</code> của <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/pipeline_v1.3/tokenizer.py"><code>tokenizer.py</code></a>.
+          </div>
+        </section>
+
+        <!-- B6: TEXTCNN -->
+        <section id="step6-textcnn" class="section-card" style="margin-bottom: 32px;">
+          <h2><span class="num">6</span>Bước 6: Dự Đoán Chủ Đề Lọc Ứng Viên (TextCNN Classifier)</h2>
+          <p>Chuỗi Tokens của truy vấn được chuyển đổi thành chuỗi ID số nguyên, bù đệm về chiều dài 128 (phù hợp với cấu hình của TextCNN) và đưa vào mạng nơ-ron tích chập <strong>TextCNN</strong>.</p>
+          
+          <p>TextCNN áp dụng các bộ lọc tích chập một chiều quét qua chuỗi để nắm bắt các cụm từ quan trọng và tính toán xác suất phân bố của câu hỏi trên các lớp chủ đề <code>macro_domain</code> khác nhau.</p>
+
+          <div class="example-panel">
+            <h4><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg> Mô Phỏng Phép Lọc Ứng Viên Thực Tế</h4>
+            <p><strong>Đầu ra xác suất chủ đề của TextCNN:</strong></p>
+            <ul style="margin-left: 20px; font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
+              <li><code>Lao dong</code>: <span style="color:var(--green)">0.88</span></li>
+              <li><code>Doanh nghiep</code>: <span style="color:var(--amber)">0.10</span></li>
+              <li><code>Hinh su</code>: 0.02</li>
+            </ul>
+            <p>Hệ thống chọn ra Top-k chủ đề (ở đây lấy <code>topic_topk=2</code>) có điểm cao nhất: là <code>["Lao dong", "Doanh nghiep"]</code>.</p>
+            <p>Sử dụng chỉ mục <code>label_to_indices</code> xây dựng ở Bước 4, hệ thống lấy tập hợp các tài liệu liên quan đến 2 chủ đề này:</p>
+            <p style="font-family: var(--font-mono); font-size: 0.9rem; color: var(--cyan);">Tập hợp chỉ số ứng viên (Candidate Pool) = {0, 1} U {2} = [0, 1, 2]</p>
+          <div style="border-top: 1px dashed var(--border); padding-top: 12px; margin-top: 16px; font-size: 0.88rem; color: var(--text-muted);">
+            <strong>Ánh Xạ Thực Tế Trong Mã Nguồn:</strong>
+            <br>&bull; Lớp mạng neural phân loại được định nghĩa trong class <code>TextCNNClassifier</code> tại <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/src/models/classifier.py"><code>src/models/classifier.py</code></a>.
+            <br>&bull; Phép suy luận chủ đề và lấy ra Top-k được thực thi qua hàm <code>predict_topic_topk</code> trong <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/src/retrieval/dense.py"><code>src/retrieval/dense.py</code></a> (đối chiếu tập ứng viên qua hàm <code>candidate_indices_for_labels</code>).
+          </div>
+        </section>
+
+        <!-- B7: SCORING -->
+        <section id="step7-scoring" class="section-card" style="margin-bottom: 32px;">
+          <h2><span class="num">7</span>Bước 7: Tính Toán Điểm Cosine Song Song Trên Tập Ứng Viên</h2>
+          <p>Trên tập ứng viên vừa lọc được ở Bước 6, hệ thống thực hiện chấm điểm độ tương tự song song trên cả hai luồng biểu diễn vector:</p>
+
+          <div class="grid cols-2">
+            <div class="info-box">
+              <h3>Luồng TF-IDF (Sparse Scoring)</h3>
+              <p>Chuyển truy vấn thành vector TF-IDF. Nhân tích vô hướng với ma trận thưa chứa các ứng viên đã được chọn lọc từ <code>tfidf_matrix</code>.</p>
+            </div>
+            <div class="info-box">
+              <h3>Luồng BiLSTM (Dense Scoring)</h3>
+              <p>Mã hóa truy vấn qua Siamese BiLSTM để thu được vector Dense truy vấn. Nhân tích vô hướng với ma trận con tương ứng của các ứng viên từ <code>doc_embeddings</code>.</p>
+            </div>
+          </div>
+
+          <div class="example-panel">
+            <h4><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg> Kết Quả Điểm Số Thô Của Ví Dụ</h4>
+            <p><strong>1. Điểm thô Sparse (TF-IDF Cosine Similarity):</strong></p>
+            <ul style="margin-left: 20px; font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">
+              <li>Tài liệu 0 (Trùng nhiều từ khóa cốt lõi): <span style="color:var(--cyan)">0.80</span></li>
+              <li>Tài liệu 1 (Trùng từ khóa chung "lao động"): <span style="color:var(--cyan)">0.30</span></li>
+              <li>Tài liệu 2 (Không trùng từ khóa): <span style="color:var(--cyan)">0.00</span></li>
+            </ul>
+            <p><strong>2. Điểm thô Dense (BiLSTM Cosine Similarity):</strong></p>
+            <ul style="margin-left: 20px; font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted);">
+              <li>Tài liệu 0 (Rất tương đồng ngữ nghĩa): <span style="color:var(--purple)">0.75</span></li>
+              <li>Tài liệu 1 (Tương đồng ngữ nghĩa trung bình): <span style="color:var(--purple)">0.45</span></li>
+              <li>Tài liệu 2 (Khác biệt ngữ nghĩa): <span style="color:var(--purple)">0.15</span></li>
+            </ul>
+          <div style="border-top: 1px dashed var(--border); padding-top: 12px; margin-top: 16px; font-size: 0.88rem; color: var(--text-muted);">
+            <strong>Ánh Xạ Thực Tế Trong Mã Nguồn:</strong>
+            <br>&bull; Tính toán Cosine TF-IDF được định nghĩa trong hàm <code>tfidf_scores</code> tại tệp <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/src/retrieval/sparse.py"><code>src/retrieval/sparse.py</code></a>.
+            <br>&bull; Tính toán Cosine Dense được định nghĩa trong hàm <code>siamese_scores</code> tại tệp <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/src/retrieval/dense.py"><code>src/retrieval/dense.py</code></a>.
+            <br>&bull; Hàm điều phối tính điểm song song là <code>hybrid_scores</code> trong tệp <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/src/retrieval/hybrid.py"><code>src/retrieval/hybrid.py</code></a>.
+          </div>
+        </section>
+
+        <!-- B8: MINMAX -->
+        <section id="step8-minmax" class="section-card" style="margin-bottom: 32px;">
+          <h2><span class="num">8</span>Bước 8: Chuẩn Hóa Điểm Số Min-Max</h2>
+          <p>Vì phân phối giá trị của điểm Cosine thô trên vector thưa (TF-IDF) và vector dày (LSTM) nằm ở các dải giá trị rất khác nhau (điểm Sparse thường dốc hơn và dễ đạt điểm tuyệt đối hơn điểm Dense), hệ thống tiến hành chuẩn hóa độc lập hai luồng điểm về cùng đoạn $[0, 1]$.</p>
+
+          <div class="formula-container" style="max-width: 600px; margin: 15px auto;">
+            <div class="formula-title">Hàm Chuẩn Hóa Min-Max</div>
+            <div class="math">
+              $$S_{norm} = \frac{S - S_{min}}{S_{max} - S_{min} + \epsilon}$$
+            </div>
+          </div>
+
+          <div class="example-panel">
+            <h4><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg> Tính Toán Chuẩn Hóa Theo Ví Dụ</h4>
+            <p><strong>1. Chuẩn hóa luồng Sparse:</strong> ($S_{min} = 0.00$, $S_{max} = 0.80$)</p>
+            <ul style="margin-left: 20px; font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
+              <li>Tài liệu 0: (0.80 - 0.00) / (0.80 - 0.00) = <span style="color:var(--cyan)">1.000</span></li>
+              <li>Tài liệu 1: (0.30 - 0.00) / (0.80 - 0.00) = <span style="color:var(--cyan)">0.375</span></li>
+              <li>Tài liệu 2: (0.00 - 0.00) / (0.80 - 0.00) = <span style="color:var(--cyan)">0.000</span></li>
+            </ul>
+            <p><strong>2. Chuẩn hóa luồng Dense:</strong> ($S_{min} = 0.15$, $S_{max} = 0.75$)</p>
+            <ul style="margin-left: 20px; font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted);">
+              <li>Tài liệu 0: (0.75 - 0.15) / (0.75 - 0.15) = <span style="color:var(--purple)">1.000</span></li>
+              <li>Tài liệu 1: (0.45 - 0.15) / (0.75 - 0.15) = <span style="color:var(--purple)">0.500</span></li>
+              <li>Tài liệu 2: (0.15 - 0.15) / (0.75 - 0.15) = <span style="color:var(--purple)">0.000</span></li>
+            </ul>
+          <div style="border-top: 1px dashed var(--border); padding-top: 12px; margin-top: 16px; font-size: 0.88rem; color: var(--text-muted);">
+            <strong>Ánh Xạ Thực Tế Trong Mã Nguồn:</strong>
+            <br>&bull; Giải thuật chuẩn hóa Min-Max được định nghĩa trong hàm <code>minmax_norm</code> tại tệp <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/src/retrieval/fusion.py"><code>src/retrieval/fusion.py</code></a>.
+          </div>
+        </section>
+
+        <!-- B9: FUSION -->
+        <section id="step9-fusion" class="section-card" style="margin-bottom: 12px;">
+          <h2><span class="num">9</span>Bước 9: Dung Hợp Điểm Tuyến Tính & Xếp Hạng Kết Quả</h2>
+          <p>Hai luồng điểm chuẩn hóa được dung hợp lại với nhau bằng phương thức tổng có trọng số <code>alpha</code> (mặc định $\alpha = 0.7$, nghiêng nhiều về TF-IDF để bắt các từ khóa luật tuyệt đối, nhưng vẫn giữ tín hiệu làm mịn ngữ nghĩa từ BiLSTM).</p>
+
+          <div class="formula-container" style="max-width: 600px; margin: 15px auto;">
+            <div class="formula-title">Tổ Hợp Điểm Số Hỗn Hợp (Hybrid Score)</div>
+            <div class="math">
+              $$S_{hybrid} = 0.7 \cdot S_{norm, tfidf} + 0.3 \cdot S_{norm, dense}$$
+            </div>
+          </div>
+
+          <div class="example-panel">
+            <h4><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg> Kết Quả Dung Hợp & Thứ Tự Truy Hồi Cuối Cùng</h4>
+            <p><strong>Tính điểm lai hợp thực tế:</strong></p>
+            <ul style="margin-left: 20px; font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px;">
+              <li>Tài liệu 0: 0.7 * 1.000 + 0.3 * 1.000 = <span style="color:var(--green)">1.000</span></li>
+              <li>Tài liệu 1: 0.7 * 0.375 + 0.3 * 0.500 = 0.2625 + 0.1500 = <span style="color:var(--green)">0.4125</span></li>
+              <li>Tài liệu 2: 0.7 * 0.000 + 0.3 * 0.000 = <span style="color:var(--green)">0.000</span></li>
+            </ul>
+            <p><strong>Sắp xếp & Tạo DataFrame kết quả:</strong></p>
+            <p>Hệ thống xếp hạng mảng chỉ số ứng viên theo thứ tự điểm giảm dần thu được kết quả cuối cùng: <code>Tài liệu 0 -> Tài liệu 1 -> Tài liệu 2</code>.</p>
+            
+            <table style="margin-top: 14px; font-size: 0.85rem;">
+              <thead>
+                <tr>
+                  <th>Hạng (Rank)</th>
+                  <th>ID Tài Liệu</th>
+                  <th>Nội dung trích xuất</th>
+                  <th>Điểm lai hợp cuối</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td>Passage 0</td>
+                  <td>"Hợp đồng lao động thời vụ dưới 1 tháng..."</td>
+                  <td style="color: var(--green); font-weight: bold;">1.0000</td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td>Passage 1</td>
+                  <td>"Người lao động có nghĩa vụ tuân thủ nội quy..."</td>
+                  <td style="color: var(--green);">0.4125</td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td>Passage 2</td>
+                  <td>"Doanh nghiệp phải nộp tờ khai đăng ký thuế..."</td>
+                  <td>0.0000</td>
+                </tr>
+              </tbody>
+            </table>
+          <div style="border-top: 1px dashed var(--border); padding-top: 12px; margin-top: 16px; font-size: 0.88rem; color: var(--text-muted);">
+            <strong>Ánh Xạ Thực Tế Trong Mã Nguồn:</strong>
+            <br>&bull; Giải thuật dung hợp điểm số lai hợp (Hybrid Fusion) được định nghĩa trong hàm <code>weighted_sum</code> tại tệp <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/src/retrieval/fusion.py"><code>src/retrieval/fusion.py</code></a>.
+            <br>&bull; Việc sắp xếp, tạo DataFrame xếp hạng kết quả được thực thi thông qua phương thức <code>_rank</code> của lớp <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/src/pipeline.py"><code>RetrievalPipeline</code></a> (sử dụng các hàm phụ trợ <code>top_k_order</code> và <code>format_results</code> được định nghĩa tại tệp khởi tạo <a href="file:///c:/Users/hung/Documents/GitHub/vnlegal-rag/src/retrieval/__init__.py"><code>src/retrieval/__init__.py</code></a>).
+          </div>
+        </section>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <p>Tài liệu kỹ thuật luồng dữ liệu Pipeline — VNLegal RAG v1.3</p>
+    <p style="margin-top: 6px; font-size: 0.78rem;">Thiết kế và biên soạn bởi Antigravity AI Engine. Quay lại <a href="src-architecture.html">src-architecture.html</a>.</p>
+  </footer>
+
+</div>
+</body>
+</html>

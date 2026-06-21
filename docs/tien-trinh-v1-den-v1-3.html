@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VNLegal RAG — Tiến trình v1 → v1.3 (tiếng Việt)</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --primary: #1d4ed8;
+      --v1: #64748b;
+      --v2: #7c3aed;
+      --v11: #0891b2;
+      --v13: #16a34a;
+      --bg: #f8fafc;
+      --surface: #fff;
+      --text: #0f172a;
+      --muted: #475569;
+      --border: #e2e8f0;
+      --code-bg: #0f172a;
+      --code-fg: #e2e8f0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      line-height: 1.65;
+    }
+    .wrap {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+    }
+    nav {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 20px 16px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      font-size: 14px;
+    }
+    nav h2 {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #94a3b8;
+      margin: 0 0 12px;
+    }
+    nav a {
+      display: block;
+      color: #e2e8f0;
+      text-decoration: none;
+      padding: 6px 10px;
+      border-radius: 6px;
+      margin: 2px 0;
+    }
+    nav a:hover { background: #1e293b; }
+    main {
+      padding: 40px 48px 80px;
+      max-width: 980px;
+    }
+    h1 { font-size: 30px; margin: 0 0 8px; }
+    .subtitle { color: var(--muted); font-size: 17px; margin-bottom: 24px; }
+    h2 {
+      margin-top: 48px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--border);
+      font-size: 22px;
+    }
+    h3 { margin-top: 28px; color: #334155; font-size: 17px; }
+    p { color: #1e2937; }
+    a { color: var(--primary); }
+    .banner {
+      background: linear-gradient(135deg, #eff6ff, #f0fdf4);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin: 20px 0;
+    }
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin: 24px 0;
+      border-left: 3px solid var(--border);
+      padding-left: 28px;
+    }
+    .tl-item {
+      position: relative;
+      padding: 0 0 28px 0;
+    }
+    .tl-item::before {
+      content: "";
+      position: absolute;
+      left: -36px;
+      top: 4px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 3px solid var(--surface);
+      box-shadow: 0 0 0 2px var(--border);
+    }
+    .tl-item.v1::before { background: var(--v1); box-shadow: 0 0 0 2px var(--v1); }
+    .tl-item.v2::before { background: var(--v2); box-shadow: 0 0 0 2px var(--v2); }
+    .tl-item.v11::before { background: var(--v11); box-shadow: 0 0 0 2px var(--v11); }
+    .tl-item.v13::before { background: var(--v13); box-shadow: 0 0 0 2px var(--v13); }
+    .tl-tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+    .tl-tag.v1 { background: #f1f5f9; color: #475569; }
+    .tl-tag.v2 { background: #ede9fe; color: #5b21b6; }
+    .tl-tag.v11 { background: #cffafe; color: #155e75; }
+    .tl-tag.v13 { background: #dcfce7; color: #166534; }
+    .cards {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      margin: 16px 0;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .card h4 { margin: 0 0 6px; font-size: 15px; color: var(--primary); }
+    .card p { margin: 0; font-size: 13px; color: var(--muted); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 16px 0;
+      font-size: 13.5px;
+    }
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th { background: #f1f5f9; font-weight: 600; }
+    tr:last-child td { border-bottom: none; }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    tr.win { background: #f0fdf4; }
+    pre {
+      background: var(--code-bg);
+      color: var(--code-fg);
+      padding: 14px 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-size: 12.5px;
+      line-height: 1.5;
+    }
+    code {
+      font-family: Consolas, Monaco, monospace;
+      background: #eef2ff;
+      color: #3730a3;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+    pre code { background: transparent; color: inherit; padding: 0; }
+    .flow {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      font-family: Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.7;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .note {
+      border-left: 4px solid var(--primary);
+      background: #eff6ff;
+      padding: 12px 16px;
+      border-radius: 0 8px 8px 0;
+      margin: 16px 0;
+      color: #1e3a8a;
+      font-size: 14px;
+    }
+    .note.green { border-color: var(--v13); background: #f0fdf4; color: #14532d; }
+    .chart-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .chart-box canvas { max-height: 320px; }
+    .file-list { font-size: 13px; }
+    .file-list li { margin: 4px 0; }
+    footer {
+      margin-top: 60px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    @media (max-width: 800px) {
+      .wrap { grid-template-columns: 1fr; }
+      nav { position: relative; height: auto; }
+      main { padding: 24px 20px; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <h2>Mục lục</h2>
+    <a href="#tom-tat">Tóm tắt một dòng</a>
+    <a href="#timeline">Dòng thời gian</a>
+    <a href="#v1">Giai đoạn v1</a>
+    <a href="#v2">Pipeline v2</a>
+    <a href="#v11-v12">v1.1 / v1.2</a>
+    <a href="#v13">Pipeline v1.3</a>
+    <a href="#so-sanh">Bảng so sánh</a>
+    <a href="#file-map">Bản đồ mã nguồn</a>
+    <a href="#chay">Cách chạy</a>
+    <a href="#ket-luan">Kết luận</a>
+    <hr style="border-color:#334155;margin:16px 0" />
+    <a href="giai-thich-du-an.html">→ Chi tiết kỹ thuật đầy đủ</a>
+  </nav>
+
+  <main>
+    <h1>VNLegal RAG — Bạn đã làm gì từ v1 đến v1.3?</h1>
+    <p class="subtitle">
+      Tài liệu này tổng hợp <strong>toàn bộ mã nguồn</strong> trong repo và giải thích bằng tiếng Việt
+      cách dự án phát triển qua từng phiên bản: từ nền tảng dữ liệu + huấn luyện mô hình (v1),
+      tinh chỉnh pipeline truy xuất (v2), đến phiên bản chuẩn hoá cho demo (v1.3).
+    </p>
+
+    <div class="banner">
+      <strong>Đồ án:</strong> Hệ thống hỏi đáp pháp luật tiếng Việt theo hướng RAG —
+      <em>định tuyến chủ đề</em> (TextCNN) + <em>truy xuất ngữ nghĩa</em> (Siamese) + <em>sinh câu trả lời</em> (Groq, tuỳ chọn).
+      <br />Xem thêm: <a href="giai-thich-du-an.html">giai-thich-du-an.html</a> (sơ đồ, biểu đồ, API demo chi tiết).
+    </div>
+
+    <!-- TÓM TẮT -->
+    <h2 id="tom-tat">Tóm tắt một dòng</h2>
+    <div class="cards">
+      <div class="card">
+        <h4>v1 — Nền tảng</h4>
+        <p>Chuẩn hoá dữ liệu 8 lớp, train TextCNN + 4 biến thể Siamese, chọn <strong>LSTM + Cosine</strong> (MRR 0.702).</p>
+      </div>
+      <div class="card">
+        <h4>v2 — Tuning retrieval</h4>
+        <p>Cùng model v1, thêm <strong>Hybrid TF-IDF + Siamese</strong> và quét <code>topic_topk</code> / <code>alpha</code>.</p>
+      </div>
+      <div class="card">
+        <h4>v1.3 — Demo &amp; production</h4>
+        <p>Gộp 3 lớp hiếm → <code>other</code>, train lại trên <code>data_ready_v1_3</code>, demo <strong>BiLSTM 1L</strong> + UI web.</p>
+      </div>
+    </div>
+
+    <!-- TIMELINE -->
+    <h2 id="timeline">Dòng thời gian phát triển</h2>
+    <div class="timeline">
+      <div class="tl-item v1">
+        <span class="tl-tag v1">v1 — Giai đoạn khởi tạo</span>
+        <h3>Dữ liệu + mô hình trong thư mục <code>data/</code> và <code>model/</code></h3>
+        <ul>
+          <li><code>load.ipynb</code> → <code>eda.ipynb</code> → <code>prepare-data.py</code> xuất <code>data/data_ready/</code> (8 <code>macro_domain</code>).</li>
+          <li>Tokenizer chuẩn <code>model/tokenizer.py</code> + embedding dùng chung <code>build_shared_embedding.py</code>.</li>
+          <li>Huấn luyện TextCNN và 4 notebook Siamese (LSTM/BiLSTM × Cosine/Euclidean).</li>
+          <li>Benchmark: <strong>Siamese LSTM truyền thống + Triplet Cosine</strong> thắng (Recall@1 = 0.6088, MRR = 0.7020).</li>
+          <li>Pipeline suy luận: <code>model/test-pipeline.ipynb</code> — TextCNN <strong>top-2</strong> topic → lọc corpus → Siamese xếp hạng.</li>
+        </ul>
+      </div>
+
+      <div class="tl-item v2">
+        <span class="tl-tag v2">v2 — Tinh chỉnh pipeline (không đổi tập train chính)</span>
+        <h3><code>model/test-pipeline-v2.ipynb</code></h3>
+        <ul>
+          <li>Giữ artifact model v1, mở rộng <strong>không gian cấu hình</strong> đánh giá retrieval.</li>
+          <li>Quét <code>topic_topk ∈ {3, 4}</code> (v1 cố định top-2).</li>
+          <li>Thêm pipeline <strong>Hybrid</strong>: <code>score = α·TF-IDF_norm + (1-α)·Siamese_norm</code> với α ∈ {0, 0.25, 0.5, 0.75, 1}.</li>
+          <li>Kết quả ghi trong <code>docs/so-sanh-pipeline.md</code>: Hybrid (top-4, α=0.5) gần bằng TF-IDF full corpus (MRR 0.6766 vs 0.6768).</li>
+        </ul>
+      </div>
+
+      <div class="tl-item v11">
+        <span class="tl-tag v11">v1.1 / v1.2 — Trung gian (tham chiếu trong code)</span>
+        <h3>Chuẩn bị cho v1.3</h3>
+        <ul>
+          <li>Thư mục <code>pipeline_v1.1/</code> không còn trong repo; notebook v1.3 ghi chú kế thừa <code>train-textcnn_v2.ipynb</code> từ v1.1.</li>
+          <li><code>data/data_ready_v1_2/</code> được nhắc trong cây thư mục — phiên bản dữ liệu trung gian trước khi gộp lớp hiếm.</li>
+          <li><code>pipeline_v1.3/prepare_data.py</code> dùng <strong>cùng StratifiedGroupKFold</strong> như v1.1, chỉ khác bước gộp nhãn.</li>
+        </ul>
+      </div>
+
+      <div class="tl-item v13">
+        <span class="tl-tag v13">v1.3 — Phiên bản hiện hành</span>
+        <h3>Thư mục <code>pipeline_v1.3/</code> + demo web</h3>
+        <ul>
+          <li><code>prepare_data.py</code>: gộp <strong>3 lớp macro_domain hiếm nhất trên train</strong> → <code>other</code> (còn 6 lớp).</li>
+          <li>Train lại TextCNN + 3 biến thể Siamese (LSTM uni 1L, BiLSTM 1L, BiLSTM 2L) trên <code>data/data_ready_v1_3/</code>.</li>
+          <li><code>test-pipeline-v1_3.ipynb</code>: benchmark end-to-end — <strong>BiLSTM 1L + TextCNN top-3</strong> dẫn đầu (MRR 0.6891 trên 200 query test).</li>
+          <li><code>demo_siamese_bilstm1l_ui.py</code>: server HTTP + giao diện hỏi đáp + Groq RAG (tuỳ chọn).</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- V1 -->
+    <h2 id="v1">Giai đoạn v1 — Bạn đã xây nền tảng gì?</h2>
+    <p>
+      Đây là giai đoạn <strong>nghiên cứu và chọn mô hình</strong>. Mục tiêu: có pipeline dữ liệu tái lập được,
+      huấn luyện bộ phân loại miền pháp lý và mô hình truy xuất, rồi chọn một cấu hình Siamese tốt nhất.
+    </p>
+
+    <h3>1. Pipeline dữ liệu (thư mục <code>data/</code>)</h3>
+    <div class="flow">data/raw (vnlegal_corpus, vnlegal_qa)
+    ↓  load.ipynb — tạo passage_id, qa_id, gán macro_domain heuristic từ doc_name
+    ↓  eda.ipynb — làm sạch, phân tích null/trùng/phân phối → data/processed/
+    ↓  prepare-data.py — dedup, join doc_name, StratifiedGroupKFold theo doc_name
+    →  data/data_ready/  (qa_train|val|test, corpus_*, label_maps.json — 8 lớp)</div>
+
+    <p><strong>Điểm quan trọng:</strong> chia tập theo <code>doc_name</code> (group) để cùng một văn bản pháp luật không xuất hiện ở cả train và test — tránh “học thuộc” văn bản thay vì học ngữ nghĩa.</p>
+
+    <h3>2. Tokenizer &amp; embedding dùng chung</h3>
+    <p>File <code>model/tokenizer.py</code> — mọi mô hình dùng chung:</p>
+    <ul>
+      <li><code>simple_tokenize</code>: lowercase + regex <code>\w+</code> (Unicode, giữ tiếng Việt có dấu).</li>
+      <li><code>encode_text</code> / <code>encode_with_mask</code> cho TextCNN và Siamese.</li>
+      <li><code>build_vocab</code> → <code>tokenizer_vocab.json</code> + <code>embedding.pt</code> (khởi tạo N(0, 0.02²), PAD = 0).</li>
+    </ul>
+
+    <h3>3. TextCNN — phân loại macro_domain</h3>
+    <p>Notebook <code>model/train-textcnn.ipynb</code>. Kiến trúc Kim (2014): Conv1D kernel {3,4,5}, 100 filters, max-over-time pool, dropout, softmax 8 lớp.</p>
+    <p><strong>Vai trò trong RAG:</strong> từ câu hỏi người dùng → dự đoán 1–2 chủ đề pháp lý → thu hẹp corpus trước khi Siamese xếp hạng (giảm chi phí tính toán).</p>
+
+    <h3>4. Siamese — bốn thí nghiệm, một người thắng</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Notebook</th><th>Encoder</th><th>Loss</th>
+          <th class="num">Recall@1</th><th class="num">MRR</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="win">
+          <td>train-siamese-lstm (cosine)</td><td>LSTM 1L, hidden=698</td><td>Triplet Cosine</td>
+          <td class="num"><strong>0.6088</strong></td><td class="num"><strong>0.7020</strong></td>
+        </tr>
+        <tr>
+          <td>train-siamese-bilstm (cosine)</td><td>BiLSTM 2L, hidden=256</td><td>Triplet Cosine</td>
+          <td class="num">0.5236</td><td class="num">0.6339</td>
+        </tr>
+        <tr>
+          <td>train-siamese-bilstm (euclid)</td><td>BiLSTM 2L</td><td>Triplet Euclidean</td>
+          <td class="num">0.4376</td><td class="num">0.5501</td>
+        </tr>
+        <tr>
+          <td>train-siamese-lstm (euclid)</td><td>LSTM 1L</td><td>Triplet Euclidean</td>
+          <td class="num">0.4266</td><td class="num">0.5457</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note green">
+      <strong>Kết luận v1:</strong> Chọn <em>Siamese LSTM truyền thống + Cosine</em> cho pipeline chính.
+      Cosine nhất quán vượt Euclidean; LSTM một chiều với hidden lớn (698) phù hợp dữ liệu pháp luật hơn BiLSTM 2 lớp trên tập <code>data_ready</code> gốc.
+    </div>
+
+    <h3>5. Pipeline truy xuất v1 (<code>test-pipeline.ipynb</code>)</h3>
+    <div class="flow">Câu hỏi người dùng
+    → TextCNN: lấy top-2 macro_domain
+    → Lọc corpus chỉ giữ passage thuộc 2 miền đó
+    → SiameseLSTM: encode query + từng passage → cosine similarity
+    → Trả top-K passage (Recall@K, MRR, nDCG trên qa_test)
+    (+ baseline TF-IDF full corpus và TF-IDF + lọc topic)</div>
+
+    <!-- V2 -->
+    <h2 id="v2">Pipeline v2 — Tinh chỉnh retrieval (không train lại từ đầu)</h2>
+    <p>
+      Notebook <code>model/test-pipeline-v2.ipynb</code> dùng <strong>cùng checkpoint</strong> đã train ở v1,
+      nhưng mở rộng cách <em>kết hợp</em> TF-IDF và Siamese khi xếp hạng.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Pipeline</th><th>Cấu hình</th><th class="num">MRR</th><th class="num">Recall@10</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>TF-IDF full corpus</td><td>v1/v2 chung</td><td class="num">0.6768</td><td class="num">0.8887</td></tr>
+        <tr><td>TF-IDF + topic filter</td><td>v1, top-2</td><td class="num">0.5827</td><td class="num">0.7670</td></tr>
+        <tr><td>TF-IDF + topic filter</td><td>v2, top-4</td><td class="num">0.6307</td><td class="num">0.8288</td></tr>
+        <tr><td>Siamese retrieval</td><td>v1, top-2</td><td class="num">0.4165</td><td class="num">0.6142</td></tr>
+        <tr><td>Siamese retrieval</td><td>v2, top-4</td><td class="num">0.4303</td><td class="num">0.6352</td></tr>
+        <tr class="win"><td>Hybrid TF-IDF + Siamese</td><td>v2, top-4, α=0.5</td><td class="num">0.6766</td><td class="num">0.8623</td></tr>
+      </tbody>
+    </table>
+    <div class="note">
+      <strong>Ý nghĩa v2:</strong> Bạn chứng minh rằng chỉ dùng Siamese thuần chưa đủ; kết hợp lexical (TF-IDF) và semantic (Siamese) có thể gần bằng TF-IDF full corpus.
+      Tăng <code>topic_topk</code> từ 2 lên 3–4 giúp không bỏ sót gold passage khi TextCNN dự đoán sai biên.
+    </div>
+
+    <!-- V1.1 V1.2 -->
+    <h2 id="v11-v12">v1.1 và v1.2 — Bước trung gian</h2>
+    <p>
+      Trong repo hiện tại, <code>pipeline_v1.1/</code> không còn file — chỉ còn <strong>tham chiếu</strong> trong comment của v1.3
+      (ví dụ: TextCNN v3 “cùng cấu trúc với <code>pipeline_v1.1/train-textcnn_v2.ipynb</code>”).
+    </p>
+    <ul>
+      <li><strong>v1.1:</strong> Chuẩn hoá script train (v2 notebook), giữ split StratifiedGroupKFold như <code>prepare-data.py</code>.</li>
+      <li><strong>v1.2:</strong> Thư mục <code>data/data_ready_v1_2/</code> — thử nghiệm biến thể dữ liệu trước khi quyết định gộp lớp hiếm.</li>
+      <li><strong>v1.3:</strong> Tách hẳn sang <code>pipeline_v1.3/</code> + <code>data_ready_v1_3</code> để artifact và demo không lẫn với <code>model/</code> cũ.</li>
+    </ul>
+
+    <!-- V1.3 -->
+    <h2 id="v13">Pipeline v1.3 — Phiên bản bạn đang dùng cho demo</h2>
+
+    <h3>1. Thay đổi dữ liệu — <code>prepare_data.py</code></h3>
+    <p>So với <code>data/prepare-data.py</code>, v1.3 thêm:</p>
+<pre><code># 3 lớp ít mẫu nhất trên train → gộp vào "other"
+merge_map, merged_from = build_bottom_k_merge_map(train_df["macro_domain"], k=3)
+# Civil & Investment, Industry Resources & Environment, Security & Defense → other
+# Còn 6 lớp: Finance, Justice, Labor, State Org, Transportation, other</pre>
+    <p>Output: <code>data/data_ready_v1_3/</code> + <code>label_merge_map.json</code> ghi lại lớp nào đã gộp.</p>
+
+    <h3>2. Train lại toàn bộ trên tập mới</h3>
+    <table>
+      <thead><tr><th>Bước</th><th>Lệnh / file</th><th>Ghi chú</th></tr></thead>
+      <tbody>
+        <tr><td>Chuẩn bị data</td><td><code>python pipeline_v1.3/prepare_data.py</code></td><td>merge_bottom_k=3 mặc định</td></tr>
+        <tr><td>Vocab + embedding</td><td><code>python pipeline_v1.3/build_shared_embedding.py</code></td><td>max_vocab=8000, embed_dim=200</td></tr>
+        <tr><td>TextCNN</td><td><code>train-textcnn.ipynb</code></td><td>6 lớp, val F1 ≈ 0.842, kernel {2,3,4,5}</td></tr>
+        <tr><td>Siamese BiLSTM 1L</td><td><code>train-siamese-bilstm-1L.ipynb</code></td><td>batch-hard online, 50 epoch → <strong>demo</strong></td></tr>
+        <tr><td>Siamese BiLSTM 2L</td><td><code>train-siamese-bilstm-2L.ipynb</code></td><td>So sánh độ sâu</td></tr>
+        <tr><td>Siamese LSTM uni</td><td><code>train-siamese-lstm-uni.ipynb</code></td><td>Công bằng 510-d với BiLSTM</td></tr>
+        <tr><td>Benchmark</td><td><code>test-pipeline-v1_3.ipynb</code></td><td>200 query test, topic_topk=3</td></tr>
+      </tbody>
+    </table>
+
+    <h3>3. TextCNN v1.3 — 6 lớp, class-weighted</h3>
+    <p>Từ <code>textcnn_artifacts/textcnn_meta.json</code>: Adadelta, dropout 0.55, label smoothing 0.05, CE có trọng số lớp (Labor &amp; Insurance nặng nhất ≈ 1.74).</p>
+
+    <h3>4. Siamese BiLSTM 1L — lựa chọn demo</h3>
+    <p>Meta: <code>hidden_size_per_direction=255</code>, <code>pooled_dim=510</code>, <code>negatives=batch_hard_online_cosine</code>, ~2.18M tham số.</p>
+    <p>Trên <strong>tập v1.3</strong>, BiLSTM 1L vượt LSTM uni và BiLSTM 2L trong benchmark pipeline-level — khác v1 (LSTM thắng trên data_ready 8 lớp).</p>
+
+    <h3>5. Demo web — <code>demo_siamese_bilstm1l_ui.py</code></h3>
+    <div class="flow">POST /ask
+    1. TextCNN → top-3 macro_domain + confidence
+    2. Lọc corpus_train theo topic (có ngưỡng MIN_TOPIC_CONFIDENCE)
+    3. Siamese BiLSTM 1L → cosine → top-K passage
+    4. (Tuỳ chọn) GROQ_API_KEY → llama sinh câu trả lời grounded + đánh giá relevance
+
+Mở: python pipeline_v1.3/demo_siamese_bilstm1l_ui.py → http://127.0.0.1:8000</div>
+    <p>Cấu hình môi trường: xem <code>pipeline_v1.3/.env.example</code> (Groq, ngưỡng điểm retrieval, v.v.).</p>
+
+    <!-- SO SÁNH -->
+    <h2 id="so-sanh">Bảng so sánh các phiên bản</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Tiêu chí</th><th>v1</th><th>v2</th><th>v1.3</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Thư mục chính</td><td><code>data/</code>, <code>model/</code></td><td><code>model/test-pipeline-v2.ipynb</code></td><td><code>pipeline_v1.3/</code></td></tr>
+        <tr><td>Dữ liệu train</td><td><code>data_ready</code> (8 lớp)</td><td>Cùng v1</td><td><code>data_ready_v1_3</code> (6 lớp, có <code>other</code>)</td></tr>
+        <tr><td>Siamese production</td><td>LSTM + Cosine</td><td>Cùng v1</td><td>BiLSTM 1L + Cosine (demo)</td></tr>
+        <tr><td>TextCNN topic</td><td>top-2</td><td>top-3, top-4</td><td>top-3 (demo)</td></tr>
+        <tr><td>Hybrid TF-IDF</td><td>Không</td><td>Có (α sweep)</td><td>Benchmark có TF-IDF baseline</td></tr>
+        <tr><td>UI / RAG</td><td>Notebook only</td><td>Notebook only</td><td>HTTP demo + Groq</td></tr>
+        <tr><td>MRR retrieval (tham chiếu)</td><td class="num">LSTM 0.702 (model-only test)</td><td class="num">Hybrid 0.6766</td><td class="num">BiLSTM1L 0.6891 (pipeline e2e)</td></tr>
+      </tbody>
+    </table>
+
+    <div class="chart-box">
+      <strong>Biểu đồ — MRR các pipeline (tham chiếu từ tài liệu trong repo)</strong>
+      <canvas id="chartMrr"></canvas>
+    </div>
+
+    <!-- FILE MAP -->
+    <h2 id="file-map">Bản đồ toàn bộ mã nguồn trong repo</h2>
+    <p>Danh sách file Python / notebook có logic (không gồm <code>.venv</code>, artifact nhị phân lớn):</p>
+
+    <h3>Tầng dữ liệu</h3>
+    <ul class="file-list">
+      <li><code>data/load.ipynb</code> — tạo ID, QA rows, gán macro_domain</li>
+      <li><code>data/eda.ipynb</code> — EDA, xuất processed</li>
+      <li><code>data/prepare-data.py</code> — split v1 → <code>data/data_ready/</code></li>
+    </ul>
+
+    <h3>v1 — Model &amp; đánh giá</h3>
+    <ul class="file-list">
+      <li><code>model/tokenizer.py</code> — tokenizer chuẩn toàn dự án</li>
+      <li><code>model/build_shared_embedding.py</code> — vocab + embedding.pt</li>
+      <li><code>model/train-textcnn.ipynb</code></li>
+      <li><code>model/train-siamese-lstm.ipynb</code> — LSTM + Cosine/Euclid</li>
+      <li><code>model/train-siamese-bilstm.ipynb</code> — BiLSTM + Cosine/Euclid</li>
+      <li><code>model/test-pipeline.ipynb</code> — pipeline v1 (top-2)</li>
+      <li><code>model/test-pipeline-v2.ipynb</code> — pipeline v2 (hybrid, sweep)</li>
+      <li><code>model/*_artifacts/</code> — checkpoint, meta, history</li>
+    </ul>
+
+    <h3>v1.3 — Pipeline chuẩn &amp; demo</h3>
+    <ul class="file-list">
+      <li><code>pipeline_v1.3/prepare_data.py</code> — split + gộp lớp hiếm</li>
+      <li><code>pipeline_v1.3/build_shared_embedding.py</code> — wrapper gọi model/build_shared_embedding</li>
+      <li><code>pipeline_v1.3/train-textcnn.ipynb</code></li>
+      <li><code>pipeline_v1.3/train-siamese-bilstm-1L.ipynb</code></li>
+      <li><code>pipeline_v1.3/train-siamese-bilstm-2L.ipynb</code></li>
+      <li><code>pipeline_v1.3/train-siamese-lstm-uni.ipynb</code></li>
+      <li><code>pipeline_v1.3/test-pipeline-v1_3.ipynb</code></li>
+      <li><code>pipeline_v1.3/demo_siamese_bilstm1l_ui.py</code> — server + HTML UI nhúng</li>
+      <li><code>pipeline_v1.3/.env.example</code></li>
+    </ul>
+
+    <h3>Tài liệu</h3>
+    <ul class="file-list">
+      <li><code>docs/bao-cao-vnlegal-rag.md</code> — báo cáo môn học</li>
+      <li><code>docs/so-sanh-hieu-suat-lstm-bilstm.md</code> — benchmark Siamese v1</li>
+      <li><code>docs/so-sanh-pipeline.md</code> — v1 vs v2 retrieval</li>
+      <li><code>docs/giai-thich-du-an.html</code> — giải thích kỹ thuật đầy đủ + biểu đồ</li>
+      <li><code>docs/tien-trinh-v1-den-v1-3.html</code> — tài liệu này</li>
+      <li><code>README.md</code></li>
+    </ul>
+
+    <!-- CÁCH CHẠY -->
+    <h2 id="chay">Cách chạy theo phiên bản</h2>
+
+    <h3>Chạy pipeline v1.3 (khuyến nghị — demo)</h3>
+<pre><code># Từ thư mục gốc repo
+python -m pip install -r requirements.txt
+
+python pipeline_v1.3/prepare_data.py --merge-bottom-k 3
+python pipeline_v1.3/build_shared_embedding.py --max-vocab 8000 --embed-dim 200
+
+# Train (notebook hoặc Kaggle) — cần GPU
+# pipeline_v1.3/train-textcnn.ipynb
+# pipeline_v1.3/train-siamese-bilstm-1L.ipynb
+
+python pipeline_v1.3/demo_siamese_bilstm1l_ui.py
+# Mở http://127.0.0.1:8000</code></pre>
+
+    <h3>Chạy lại benchmark v1 / v2</h3>
+<pre><code># Sau khi có data/data_ready và artifact trong model/
+jupyter notebook model/test-pipeline.ipynb      # v1
+jupyter notebook model/test-pipeline-v2.ipynb   # v2 hybrid</code></pre>
+
+    <!-- KẾT LUẬN -->
+    <h2 id="ket-luan">Kết luận — Câu chuyện một dự án RAG pháp luật</h2>
+    <ol>
+      <li><strong>v1:</strong> Bạn xây nền — dữ liệu group-safe, TextCNN định tuyến, benchmark 4 Siamese và chọn LSTM+Cosine làm baseline mạnh nhất trên 8 lớp.</li>
+      <li><strong>v2:</strong> Bạn không dừng ở một pipeline cố định — thử Hybrid và mở rộng topic_topk, chứng minh kết hợp lexical + semantic có thể cạnh tranh TF-IDF full corpus.</li>
+      <li><strong>v1.3:</strong> Bạn chuẩn hoá cho triển khai — gộp lớp hiếm, train lại trên 6 lớp, chọn BiLSTM 1L cho demo, và ship <strong>giao diện web + RAG Groq</strong> để người dùng thật hỏi đáp.</li>
+    </ol>
+    <p>
+      Lưu ý: metric giữa các phiên bản <strong>không so sánh trực tiếp 100%</strong> vì khác tập nhãn (8 vs 6 lớp) và khác protocol (model-only vs pipeline end-to-end).
+      Khi báo cáo, nên ghi rõ phiên bản dữ liệu và cấu hình <code>topic_topk</code>.
+    </p>
+
+    <footer>
+      VNLegal RAG — Tài liệu tiến trình v1→v1.3 · Tạo từ mã nguồn trong repo ·
+      <a href="giai-thich-du-an.html">Mở bản giải thích chi tiết</a>
+    </footer>
+  </main>
+</div>
+
+<script>
+(function () {
+  const ctx = document.getElementById("chartMrr");
+  if (!ctx || typeof Chart === "undefined") return;
+  new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: [
+        "v1 Siamese LSTM (model test)",
+        "v2 Hybrid top-4 α=0.5",
+        "v1.3 BiLSTM1L + TextCNN e2e",
+        "v1 Siamese pipeline top-2",
+        "TF-IDF full (v1/v2)"
+      ],
+      datasets: [{
+        label: "MRR",
+        data: [0.7020, 0.6766, 0.6891, 0.4165, 0.6768],
+        backgroundColor: [
+          "#94a3b8", "#7c3aed", "#16a34a", "#cbd5e1", "#2563eb"
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        title: {
+          display: true,
+          text: "MRR tham chiếu — các protocol khác nhau, chỉ để nhìn xu hướng"
+        }
+      },
+      scales: { y: { min: 0, max: 0.75 } }
+    }
+  });
+})();
+</script>
+</body>
+</html>

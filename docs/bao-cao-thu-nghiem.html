@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VNLegal RAG — Báo cáo Kết quả Thử nghiệm Hệ thống</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Tailwind for layout, custom styling for premium looks -->
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --surface-dark: #151c2c;
+      --surface-light-dark: #1f293d;
+      --border-dark: #26354a;
+      --text-dark: #f3f4f6;
+      --text-muted-dark: #9ca3af;
+      
+      --bg-light: #f8fafc;
+      --surface-light: #ffffff;
+      --surface-light-light: #f1f5f9;
+      --border-light: #e2e8f0;
+      --text-light: #0f172a;
+      --text-muted-light: #64748b;
+
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --accent-purple: #8b5cf6;
+      --accent-emerald: #10b981;
+      --accent-rose: #f43f5e;
+      --accent-amber: #f59e0b;
+      
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      
+      --font-sans: 'Inter', system-ui, sans-serif;
+      --font-title: 'Montserrat', sans-serif;
+      --font-mono: 'Fira Code', monospace;
+      
+      /* Active theme variables placeholders */
+      --bg: var(--bg-dark);
+      --surface: var(--surface-dark);
+      --surface-hover: var(--surface-light-dark);
+      --border: var(--border-dark);
+      --text: var(--text-dark);
+      --text-muted: var(--text-muted-dark);
+      --shadow: rgba(0, 0, 0, 0.3);
+    }
+    
+    .theme-light {
+      --bg: var(--bg-light);
+      --surface: var(--surface-light);
+      --surface-hover: var(--surface-light-light);
+      --border: var(--border-light);
+      --text: var(--text-light);
+      --text-muted: var(--text-muted-light);
+      --shadow: rgba(148, 163, 184, 0.1);
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+    }
+    
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 15px;
+      overflow-x: hidden;
+    }
+    
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: var(--radius-sm);
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--primary);
+    }
+    
+    /* UI Structure */
+    .wrap {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: 100vh;
+    }
+    
+    /* Navigation Sidebar */
+    aside {
+      background: #090d16;
+      border-right: 1px solid var(--border-dark);
+      padding: 30px 20px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      z-index: 50;
+    }
+    
+    .aside-header {
+      margin-bottom: 35px;
+    }
+    
+    .aside-title {
+      font-family: var(--font-title);
+      font-weight: 800;
+      font-size: 18px;
+      letter-spacing: 0.5px;
+      background: linear-gradient(135deg, #60a5fa, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .aside-subtitle {
+      font-size: 11px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-top: 5px;
+      font-weight: 600;
+    }
+    
+    .menu-section-label {
+      font-size: 11px;
+      color: #4b5563;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 20px 0 10px 10px;
+      font-weight: 700;
+    }
+    
+    .menu-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      color: #94a3b8;
+      text-decoration: none;
+      border-radius: var(--radius-sm);
+      font-weight: 500;
+      font-size: 14px;
+      margin-bottom: 4px;
+      cursor: pointer;
+    }
+    
+    .menu-link:hover, .menu-link.active {
+      color: #fff;
+      background: rgba(59, 130, 246, 0.15);
+      border-left: 3px solid var(--primary);
+    }
+    
+    .menu-link.active {
+      font-weight: 600;
+      background: linear-gradient(90deg, rgba(59, 130, 246, 0.15), transparent);
+    }
+    
+    .theme-toggle-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px;
+      background: var(--surface-light-dark);
+      border: 1px solid var(--border-dark);
+      color: #fff;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      margin-top: 20px;
+      width: 100%;
+    }
+    
+    .theme-toggle-btn:hover {
+      background: var(--primary);
+      border-color: var(--primary);
+    }
+    
+    /* Main Content */
+    main {
+      padding: 40px 50px 80px;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    
+    header.hero {
+      position: relative;
+      background: radial-gradient(120% 120% at 0% 0%, rgba(59, 130, 246, 0.12), rgba(139, 92, 246, 0.05)), var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      margin-bottom: 35px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px var(--shadow);
+    }
+    
+    header.hero::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 99px;
+      margin-bottom: 15px;
+    }
+    
+    .hero h1 {
+      font-family: var(--font-title);
+      font-size: 32px;
+      font-weight: 800;
+      line-height: 1.25;
+      margin-bottom: 12px;
+      letter-spacing: -0.5px;
+      background: linear-gradient(90deg, var(--text), var(--primary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .hero p.lead {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 800px;
+      margin-bottom: 24px;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    
+    .stat-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: #fff;
+      font-family: var(--font-title);
+      margin-bottom: 4px;
+    }
+    .theme-light .stat-value {
+      color: var(--text);
+    }
+    
+    .stat-card.primary .stat-value { color: var(--primary); }
+    .stat-card.purple .stat-value { color: var(--accent-purple); }
+    .stat-card.emerald .stat-value { color: var(--accent-emerald); }
+    .stat-card.rose .stat-value { color: var(--accent-rose); }
+    
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    /* Section Formatting */
+    .section-content {
+      display: none;
+    }
+    .section-content.active {
+      display: block;
+      animation: fadeIn 0.4s ease-in-out;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    h2.section-title {
+      font-family: var(--font-title);
+      font-size: 24px;
+      font-weight: 700;
+      margin: 40px 0 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+    }
+    
+    h2.section-title::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 24px;
+      background: var(--primary);
+      border-radius: 4px;
+    }
+    
+    h3 {
+      font-family: var(--font-title);
+      font-size: 18px;
+      font-weight: 600;
+      margin: 25px 0 12px;
+      color: var(--text);
+    }
+    
+    p {
+      margin-bottom: 16px;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+    
+    strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+    
+    /* Grid Layouts */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+      gap: 24px;
+      margin: 20px 0;
+    }
+    
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+    
+    /* Cards styling */
+    .card {
+      background-color: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      box-shadow: 0 4px 20px var(--shadow);
+      position: relative;
+    }
+    
+    .card.hover-effect:hover {
+      transform: translateY(-4px);
+      border-color: var(--primary);
+      box-shadow: 0 10px 25px rgba(59, 130, 246, 0.1);
+    }
+    
+    .card-badge {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+    }
+    
+    .card-badge.success { background: rgba(16, 185, 129, 0.1); color: var(--accent-emerald); }
+    .card-badge.info { background: rgba(59, 130, 246, 0.1); color: var(--primary); }
+    .card-badge.purple { background: rgba(139, 92, 246, 0.1); color: var(--accent-purple); }
+    .card-badge.warning { background: rgba(245, 158, 11, 0.1); color: var(--accent-amber); }
+    
+    /* Interactive Timeline */
+    .timeline {
+      position: relative;
+      padding-left: 35px;
+      margin: 30px 0;
+    }
+    
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 7px;
+      top: 5px;
+      bottom: 5px;
+      width: 2px;
+      background: var(--border);
+    }
+    
+    .timeline-item {
+      position: relative;
+      margin-bottom: 40px;
+    }
+    
+    .timeline-item:last-child {
+      margin-bottom: 0;
+    }
+    
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -35px;
+      top: 6px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--bg);
+      border: 3px solid var(--primary);
+      box-shadow: 0 0 0 4px var(--bg);
+      z-index: 10;
+    }
+    
+    .timeline-item.active::before {
+      border-color: var(--accent-emerald);
+      background: var(--accent-emerald);
+    }
+    
+    .timeline-item.wip::before {
+      border-color: var(--accent-purple);
+    }
+    
+    .timeline-date {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    
+    .timeline-item.active .timeline-date {
+      color: var(--accent-emerald);
+    }
+    
+    .timeline-title {
+      font-family: var(--font-title);
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    
+    /* Code block styling */
+    pre {
+      background: #090d16;
+      border: 1px solid var(--border-dark);
+      padding: 16px 20px;
+      border-radius: var(--radius-sm);
+      overflow-x: auto;
+      margin: 15px 0;
+    }
+    
+    code {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      color: #3b82f6;
+    }
+    
+    pre code {
+      color: #cbd5e1;
+    }
+    
+    .inline-code {
+      background: rgba(59, 130, 246, 0.08);
+      border: 1px solid rgba(59, 130, 246, 0.15);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: var(--primary);
+      font-family: var(--font-mono);
+    }
+    
+    /* Tables design */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin: 20px 0;
+      box-shadow: 0 4px 15px var(--shadow);
+    }
+    
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    th {
+      background: var(--surface-hover);
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    tr:last-child td {
+      border-bottom: none;
+    }
+    
+    tr:hover td {
+      background: rgba(59, 130, 246, 0.02);
+    }
+    
+    tr.win {
+      background: rgba(16, 185, 129, 0.05);
+    }
+    tr.win td {
+      border-left: 3px solid var(--accent-emerald);
+    }
+    
+    .table-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .table-badge.green { background: rgba(16, 185, 129, 0.1); color: var(--accent-emerald); }
+    .table-badge.blue { background: rgba(59, 130, 246, 0.1); color: var(--primary); }
+    
+    /* Graph Container */
+    .chart-container {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      margin: 24px 0;
+      box-shadow: 0 4px 20px var(--shadow);
+    }
+    
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    
+    .chart-selector {
+      display: flex;
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      padding: 4px;
+      border-radius: var(--radius-sm);
+    }
+    
+    .chart-btn {
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    
+    .chart-btn.active {
+      background: var(--primary);
+      color: #fff;
+    }
+    
+    /* Flow Diagrams (Pure CSS/SVG) */
+    .flow-chart {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 30px;
+      margin: 25px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      align-items: center;
+    }
+    
+    .flow-node {
+      background: var(--surface-hover);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 20px;
+      width: 100%;
+      max-width: 420px;
+      text-align: center;
+      box-shadow: 0 4px 6px var(--shadow);
+      position: relative;
+    }
+    
+    .flow-node.highlight {
+      border-color: var(--primary);
+      background: rgba(59, 130, 246, 0.05);
+    }
+    
+    .flow-node.success {
+      border-color: var(--accent-emerald);
+      background: rgba(16, 185, 129, 0.05);
+    }
+    
+    .flow-node-title {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    
+    .flow-node-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    
+    .flow-arrow {
+      color: var(--primary);
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    
+    /* Alerts */
+    .alert {
+      border-left: 4px solid var(--primary);
+      background: rgba(59, 130, 246, 0.05);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 16px 20px;
+      margin: 20px 0;
+    }
+    
+    .alert-title {
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    
+    .alert.success {
+      border-left-color: var(--accent-emerald);
+      background: rgba(16, 185, 129, 0.03);
+    }
+    
+    .alert.warning {
+      border-left-color: var(--accent-amber);
+      background: rgba(245, 158, 11, 0.03);
+    }
+    
+    /* Tabs & Accordions */
+    .tab-container {
+      margin-top: 20px;
+    }
+    
+    .tab-headers {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      gap: 20px;
+      margin-bottom: 20px;
+      overflow-x: auto;
+    }
+    
+    .tab-header {
+      padding: 10px 4px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      position: relative;
+      white-space: nowrap;
+    }
+    
+    .tab-header:hover {
+      color: var(--text);
+    }
+    
+    .tab-header.active {
+      color: var(--primary);
+    }
+    
+    .tab-header.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--primary);
+    }
+    
+    .tab-pane {
+      display: none;
+    }
+    
+    .tab-pane.active {
+      display: block;
+    }
+    
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding-top: 25px;
+      margin-top: 60px;
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+    
+    /* Mobile styles */
+    @media (max-width: 900px) {
+      .wrap {
+        grid-template-columns: 1fr;
+      }
+      aside {
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        position: relative;
+      }
+      main {
+        padding: 30px 20px;
+      }
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body class="theme-dark">
+
+<div class="wrap">
+  <!-- NAVIGATION SIDEBAR -->
+  <aside>
+    <div class="aside-header">
+      <div class="aside-title">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #60a5fa"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        VNLegal RAG
+      </div>
+      <div class="aside-subtitle">Mục Lục</div>
+      
+      <div class="menu-section-label">Nội Dung</div>
+      <div class="menu-link active" onclick="switchSection('page-intro')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        Tổng Quan Dự Án
+      </div>
+      <div class="menu-link" onclick="switchSection('page-data')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        Quy Trình Dữ Liệu
+      </div>
+      <div class="menu-link" onclick="switchSection('page-experiments')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10a2 2 0 01-2 2h-2a2 2 0 01-2-2zm9 0h1a1 1 0 001-1v-4a1 1 0 00-1-1h-1a1 1 0 00-1 1v4a1 1 0 001 1z"/></svg>
+        Tiến Trình Thử Nghiệm
+      </div>
+      <div class="menu-link" onclick="switchSection('page-metrics')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+        Bảng So Sánh Chỉ Số
+      </div>
+      <div class="menu-link" onclick="switchSection('page-pipeline')">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 4a2 2 0 114 0v1a2 2 0 002 2h3a1 1 0 011 1v3a2 2 0 002 2 2 2 0 01-2 2h-3a2 2 0 00-2 2v1a2 2 0 11-4 0v-1a2 2 0 00-2-2H3a1 1 0 01-1-1V7a2 2 0 002-2h3a2 2 0 002-2V4z"/></svg>
+        Pipeline Hoàn Chỉnh (v1.3)
+      </div>
+    </div>
+    
+    <div>
+      <button class="theme-toggle-btn" onclick="toggleTheme()">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-11.314l.707.707m11.314 11.314l.707-.707M12 7a5 5 0 100 10 5 5 0 000-10z"/></svg>
+        <span>Đổi Giao Diện</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main>
+    <!-- HERO HEADER -->
+    <header class="hero">
+      <div class="hero-badge">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+        Học Máy & Deep Learning
+      </div>
+      <h1>VNLegal RAG — Báo Cáo Thực Nghiệm</h1>
+      <p class="lead">
+        Hệ thống Hỏi đáp Pháp luật tiếng Việt ứng dụng kỹ thuật Truy xuất tăng cường (RAG). 
+        Tài liệu mô tả chi tiết toàn bộ các giai đoạn nghiên cứu, tối ưu hóa thuật toán từ tiền xử lý dữ liệu, 
+        định tuyến chủ đề, so khớp ngữ nghĩa đến việc hoàn thiện kiến trúc Hybrid tối ưu.
+      </p>
+      
+      <!-- Quick Stats -->
+      <div class="stats-grid">
+        <div class="stat-card primary">
+          <span class="stat-value">6 Lớp</span>
+          <span class="stat-label">Chủ đề phân loại</span>
+        </div>
+        <div class="stat-card purple">
+          <span class="stat-value">0.6891</span>
+          <span class="stat-label">Best Siamese MRR (v1.3)</span>
+        </div>
+        <div class="stat-card emerald">
+          <span class="stat-value">88.30%</span>
+          <span class="stat-label">Recall@10 LSTM (v1)</span>
+        </div>
+        <div class="stat-card rose">
+          <span class="stat-value">+4.0%</span>
+          <span class="stat-label">Gain của Hybrid vs TF-IDF</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- SECTION 1: INTRO -->
+    <div id="page-intro" class="section-content active">
+      <h2 class="section-title">Tổng Quan Đề Tài &amp; Mục Tiêu</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Hệ thống Hỏi Đáp Pháp Luật là gì?</h3>
+          <p>
+            Văn bản pháp luật có đặc điểm dài, cấu trúc phức tạp và nhiều thuật ngữ chuyên môn. 
+            Để xây dựng một hệ thống hỏi đáp chính xác, phương pháp sinh văn bản tự do (LLM đơn thuần) thường gặp hiện tượng ảo tưởng (hallucination). 
+            Do đó, <strong>VNLegal RAG</strong> áp dụng phương pháp <strong>Retrieval-Augmented Generation (RAG)</strong>.
+          </p>
+          <p>
+            Quy trình này tách biệt thành phần <em>Truy xuất ngữ nghĩa</em> để lọc ra văn bản luật chính xác, 
+            sau đó gửi ngữ cảnh này để LLM tổng hợp và đưa ra câu trả lời cho người dùng.
+          </p>
+        </div>
+        <div class="card">
+          <h3>Kiến Trúc Hai Nhánh Độc Lập</h3>
+          <p>
+            Nhằm tối ưu chi phí tính toán khi không gian tài liệu rất lớn, hệ thống giải quyết đồng thời hai bài toán bổ trợ:
+          </p>
+          <ul style="padding-left: 20px; color: var(--text-muted); margin-bottom: 15px">
+            <li style="margin-bottom: 8px"><strong>Định tuyến Truy vấn (Query Routing):</strong> Nhận diện câu hỏi thuộc miền pháp lý nào để thu hẹp không gian tìm kiếm bằng mô hình <code>TextCNN</code>.</li>
+            <li style="margin-bottom: 8px"><strong>So khớp Ngữ nghĩa (Semantic Matching):</strong> Dùng mô hình <code>Siamese Network</code> học biểu diễn vector để xếp hạng mức tương đồng giữa truy vấn và tài liệu.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="alert success">
+        <div class="alert-title">Mục tiêu kỹ thuật đạt được:</div>
+        <p>Giảm thiểu tối đa hiện tượng rò rỉ dữ liệu (Data Leakage) bằng cách phân hoạch tập dữ liệu theo nhóm văn bản (Grouped Split), đạt độ chính xác cao trong định tuyến chủ đề, và kết xuất dữ liệu nhanh dưới dạng Hybrid Retriever.</p>
+      </div>
+    </div>
+
+    <!-- SECTION 2: DATA PIPELINE -->
+    <div id="page-data" class="section-content">
+      <h2 class="section-title">Quy Trình Tiền Xử Lý Dữ Liệu</h2>
+      <p>
+        Dữ liệu đầu vào gồm 2 phần trong thư mục <code>data/raw/</code>: tập văn bản pháp luật (<code>vnlegal_corpus</code>) và tập câu hỏi - trả lời tương ứng (<code>vnlegal_qa</code>).
+      </p>
+      
+      <div class="flow-chart">
+        <div class="flow-node highlight">
+          <div class="flow-node-title">1. data/load.ipynb</div>
+          <div class="flow-node-desc">Đánh ID đoạn, gán nhãn chủ đề (macro_domain) dựa trên tên văn bản luật</div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node highlight">
+          <div class="flow-node-title">2. data/eda.ipynb</div>
+          <div class="flow-node-desc">Loại bỏ null, khử trùng lặp câu hỏi, thống kê phân phối độ dài</div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node success">
+          <div class="flow-node-title">3. data/prepare-data.py</div>
+          <div class="flow-node-desc">Tách tập dữ liệu train/val/test sử dụng StratifiedGroupKFold theo nhóm tài liệu</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Chiến lược Group-Safe Split</h3>
+          <p>
+            Trong dữ liệu RAG, một văn bản pháp luật có thể liên kết với nhiều câu hỏi khác nhau. 
+            Nếu chia ngẫu nhiên (Random Split), các câu hỏi liên kết với cùng một tài liệu có thể nằm ở cả tập Train và Test. 
+            Mô hình khi đó sẽ học thuộc mẫu biểu diễn (Overfitting) thay vì học cách tổng quát hóa ngữ nghĩa.
+          </p>
+          <p>
+            Để giải quyết, <strong>Grouped Split theo <code>doc_name</code></strong> đảm bảo toàn bộ câu hỏi và tài liệu của cùng một văn bản luật chỉ xuất hiện trong duy nhất một tập (hoặc Train, hoặc Val, hoặc Test).
+          </p>
+        </div>
+        <div class="card">
+          <h3>Tokenizer &amp; Embedding Dùng Chung</h3>
+          <p>
+            Mọi mô hình trong hệ thống đều sử dụng bộ tokenizer dùng chung tại <code>model/tokenizer.py</code>:
+          </p>
+          <ul style="padding-left: 20px; color: var(--text-muted)">
+            <li style="margin-bottom: 8px">Tokenizer tối giản: Chuyển chữ thường kết hợp biểu thức chính quy (Regex) hỗ trợ bảng mã tiếng Việt. Không phụ thuộc thư viện tách từ bên ngoài giúp chạy nhanh trên mọi CPU/GPU.</li>
+            <li style="margin-bottom: 8px">Embedding dùng chung được xây dựng một lần để cố định biểu diễn từ cho cả TextCNN và Siamese, tăng tốc độ huấn luyện.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 3: EXPERIMENT TIMELINE -->
+    <div id="page-experiments" class="section-content">
+      <h2 class="section-title">Tiến Trình Thử Nghiệm Qua Các Phiên Bản</h2>
+      
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="timeline-date">Giai đoạn v1 — Khởi Tạo Nền Tảng</div>
+          <div class="timeline-title">Phân tích Mô hình &amp; Tìm Kiến trúc Siamese Tối ưu</div>
+          <p>
+            Thực hiện trên tập dữ liệu gốc gồm 8 lớp <code>macro_domain</code>. 
+            Huấn luyện mô hình định tuyến <code>TextCNN</code> và thử nghiệm song song 4 biến thể Siamese để tìm ra bộ so khớp ngữ nghĩa tốt nhất.
+          </p>
+          <div class="alert warning" style="margin-top: 10px; padding: 10px 15px">
+            <strong>Kết quả v1:</strong> Mô hình <strong>Siamese LSTM truyền thống + Triplet Cosine Loss</strong> đạt hiệu năng cao vượt trội so với BiLSTM và Euclid Loss (MRR: 0.7020, Recall@10: 0.8830).
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-date">Giai đoạn v2 — Tối Ưu Hóa Retrieval</div>
+          <div class="timeline-title">Mở rộng không gian cấu hình &amp; Thuật toán Hybrid</div>
+          <p>
+            Giữ nguyên checkpoint của v1 nhưng thay đổi thuật toán xếp hạng tại <code>model/test-pipeline-v2.ipynb</code>:
+          </p>
+          <ul style="padding-left: 20px; color: var(--text-muted); margin-bottom: 12px">
+            <li>Quét thử nghiệm tăng <code>topic_topk</code> của TextCNN lên 3 và 4 (v1 cố định lấy top-2) nhằm tránh bỏ sót tài liệu đích.</li>
+            <li>Xây dựng cơ chế chấm điểm <strong>Hybrid (TF-IDF + Siamese)</strong> kết hợp giữa so khớp từ khóa (lexical) và so khớp ngữ nghĩa (dense).</li>
+          </ul>
+          <p>
+            <strong>Phát hiện:</strong> Phiên bản Hybrid (top-4, alpha=0.5) đạt điểm số MRR tiệm cận TF-IDF trên toàn bộ corpus nhưng giảm đáng kể số lượng tài liệu cần quét.
+          </p>
+        </div>
+
+        <div class="timeline-item active">
+          <div class="timeline-date">Giai đoạn v1.3 — Chuẩn Hóa Production &amp; Demo</div>
+          <div class="timeline-title">Gộp lớp hiếm, Huấn luyện lại và Hoàn thiện Giao diện</div>
+          <p>
+            Nhận thấy một số lớp <code>macro_domain</code> có quá ít dữ liệu huấn luyện dẫn đến mô hình định tuyến hoạt động kém ổn định ở các lớp này.
+          </p>
+          <div class="alert success" style="margin-top: 10px; padding: 10px 15px">
+            <strong>Cải tiến dữ liệu:</strong> Gộp 3 lớp ít mẫu nhất thành lớp <code>other</code> (còn lại 6 lớp lớn). 
+            Huấn luyện lại toàn bộ mô hình trên tập dữ liệu mới <code>data_ready_v1_3</code>.
+          </div>
+          <p>
+            Trong tập nhãn mới, kiến trúc <strong>Siamese BiLSTM 1 lớp</strong> đạt hiệu năng tốt nhất khi đánh giá e2e cùng TextCNN top-3 (MRR: 0.6891 trên 200 câu hỏi test). 
+            Hoàn tất xây dựng giao diện tương tác và tích hợp LLM sinh phản hồi qua Groq.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 4: METRICS & COMPARISON -->
+    <div id="page-metrics" class="section-content">
+      <h2 class="section-title">Bảng Chỉ Số So Sánh Thực Nghiệm</h2>
+      
+      <!-- Interactive Charts -->
+      <div class="chart-container">
+        <div class="chart-header">
+          <div>
+            <h3 style="margin: 0; font-size: 16px">Biểu đồ So Sánh Kết Quả</h3>
+            <p style="margin: 0; font-size: 12px; color: var(--text-muted)">Click chọn bộ thí nghiệm để xem dữ liệu</p>
+          </div>
+          <div class="chart-selector">
+            <button id="btn-chart-siamese" class="chart-btn active" onclick="loadChartData('siamese')">1. Siamese Backbones (v1)</button>
+            <button id="btn-chart-pipelines" class="chart-btn" onclick="loadChartData('pipelines')">2. Pipeline Retrieval (v2)</button>
+            <button id="btn-chart-v13" class="chart-btn" onclick="loadChartData('v13')">3. Phiên bản v1.3</button>
+          </div>
+        </div>
+        <canvas id="metricsChart" style="width:100%; height:320px;"></canvas>
+      </div>
+
+      <div class="tab-container">
+        <div class="tab-headers">
+          <div id="tab-hdr-1" class="tab-header active" onclick="switchTableTab(1)">Thí Nghiệm Siamese Backbone (v1)</div>
+          <div id="tab-hdr-2" class="tab-header" onclick="switchTableTab(2)">Thử Nghiệm Định Tuyến &amp; Hybrid (v2)</div>
+          <div id="tab-hdr-3" class="tab-header" onclick="switchTableTab(3)">Đánh Giá Cuối Cùng (v1.3)</div>
+        </div>
+        
+        <!-- Tab 1: Siamese v1 -->
+        <div id="tab-pane-1" class="tab-pane active">
+          <p>Đánh giá trực tiếp khả năng xếp hạng của các backbone Siamese trên tập kiểm thử (model-only test):</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Backbone Model</th>
+                <th>Distance Metric</th>
+                <th>Recall@1</th>
+                <th>Recall@5</th>
+                <th>Recall@10</th>
+                <th>MRR Score</th>
+                <th>Đánh giá</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="win">
+                <td><strong>LSTM (traditional)</strong></td>
+                <td><span class="table-badge green">Cosine</span></td>
+                <td>0.6088</td>
+                <td>0.8134</td>
+                <td>0.8830</td>
+                <td>0.7020</td>
+                <td>Tốt nhất. LSTM 1 lớp với hidden size lớn (698) biểu diễn văn bản luật tốt hơn.</td>
+              </tr>
+              <tr>
+                <td>BiLSTM</td>
+                <td><span class="table-badge green">Cosine</span></td>
+                <td>0.5236</td>
+                <td>0.7690</td>
+                <td>0.8472</td>
+                <td>0.6339</td>
+                <td>F1/MRR ở mức khá, bị overfitting nhẹ trong quá trình train.</td>
+              </tr>
+              <tr>
+                <td>BiLSTM</td>
+                <td><span class="table-badge blue">Euclidean</span></td>
+                <td>0.4376</td>
+                <td>0.6847</td>
+                <td>0.7767</td>
+                <td>0.5501</td>
+                <td>Hiệu năng trung bình. Khoảng cách Euclidean kém nhạy hơn Cosine trong không gian vector cao chiều.</td>
+              </tr>
+              <tr>
+                <td>LSTM (traditional)</td>
+                <td><span class="table-badge blue">Euclidean</span></td>
+                <td>0.4266</td>
+                <td>0.6857</td>
+                <td>0.7763</td>
+                <td>0.5457</td>
+                <td>Kém nhất trong 4 biến thể đã quét.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Tab 2: Pipelines v2 -->
+        <div id="tab-pane-2" class="tab-pane">
+          <p>Đánh giá khi tích hợp cùng bộ lọc định tuyến chủ đề TextCNN (sử dụng cùng checkpoint mô hình từ v1):</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Phương pháp Retrieval</th>
+                <th>Cấu hình</th>
+                <th>Recall@1</th>
+                <th>Recall@10</th>
+                <th>MRR</th>
+                <th>nDCG@10</th>
+                <th>Đặc điểm vận hành</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>TF-IDF Toàn Corpus</td>
+                <td>Cố định</td>
+                <td>0.5670</td>
+                <td>0.8887</td>
+                <td>0.6768</td>
+                <td>0.7282</td>
+                <td>Mốc lexical baseline mạnh nhất. Tuy nhiên tốc độ chậm khi corpus phình to.</td>
+              </tr>
+              <tr>
+                <td>TF-IDF + Topic Filter</td>
+                <td>v1 (top-2 topic)</td>
+                <td>0.4865</td>
+                <td>0.7670</td>
+                <td>0.5827</td>
+                <td>0.6274</td>
+                <td>Nhanh nhưng dễ mất tài liệu vàng nếu bộ phân loại dự đoán sai.</td>
+              </tr>
+              <tr>
+                <td>TF-IDF + Topic Filter</td>
+                <td>v2 (top-4 topic)</td>
+                <td>0.5272</td>
+                <td>0.8288</td>
+                <td>0.6307</td>
+                <td>0.6788</td>
+                <td>Recall cải thiện rõ rệt nhờ nới rộng pool ứng viên.</td>
+              </tr>
+              <tr>
+                <td>Siamese Retrieval</td>
+                <td>v1 (top-2 topic)</td>
+                <td>0.3213</td>
+                <td>0.6142</td>
+                <td>0.4165</td>
+                <td>0.4641</td>
+                <td>Chỉ dùng Dense vector thuần trên pool lọc cho kết quả chưa tối ưu.</td>
+              </tr>
+              <tr class="win">
+                <td><strong>Hybrid (TF-IDF + Siamese)</strong></td>
+                <td><strong>v2 (top-4, alpha=0.5)</strong></td>
+                <td><strong>0.5777</strong></td>
+                <td><strong>0.8623</strong></td>
+                <td><strong>0.6766</strong></td>
+                <td><strong>0.7218</strong></td>
+                <td>Đạt hiệu năng tương đương TF-IDF toàn corpus nhưng thời gian xử lý nhanh hơn do thu hẹp không gian.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <!-- Tab 3: Final v1.3 -->
+        <div id="tab-pane-3" class="tab-pane">
+          <p>Đánh giá trên tập dữ liệu 6 lớp sau khi gộp lớp hiếm (qa_test, n=200 mẫu thử nghiệm):</p>
+          <table>
+            <thead>
+              <tr>
+                <th>Mô hình Pipeline</th>
+                <th>Định tuyến (TextCNN)</th>
+                <th>Recall@1</th>
+                <th>Recall@5</th>
+                <th>Recall@10</th>
+                <th>MRR Score</th>
+                <th>Kết luận</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>tfidf_textcnn</td>
+                <td>Top-3 topic</td>
+                <td>0.4800</td>
+                <td>0.7250</td>
+                <td>0.7800</td>
+                <td>0.5779</td>
+                <td>Lexical baseline trên tập dữ liệu v1.3.</td>
+              </tr>
+              <tr>
+                <td>siamese_textcnn</td>
+                <td>Top-3 (BiLSTM 1L)</td>
+                <td>0.3000</td>
+                <td>0.5450</td>
+                <td>0.6350</td>
+                <td>0.4044</td>
+                <td>Mô hình dense với bộ lọc định tuyến.</td>
+              </tr>
+              <tr>
+                <td>siamese_only</td>
+                <td>Không lọc (toàn corpus)</td>
+                <td>0.3350</td>
+                <td>0.5650</td>
+                <td>0.6250</td>
+                <td>0.4277</td>
+                <td>Độ chính xác cao hơn siamese_textcnn một chút do không bị ảnh hưởng bởi lỗi của TextCNN.</td>
+              </tr>
+              <tr class="win">
+                <td><strong>hybrid_textcnn</strong></td>
+                <td><strong>Top-3 (alpha=0.7)</strong></td>
+                <td><strong>0.5150</strong></td>
+                <td><strong>0.7550</strong></td>
+                <td><strong>0.8200</strong></td>
+                <td><strong>0.6172</strong></td>
+                <td>Chiến thắng. Sự kết hợp giữa BiLSTM 1L và TF-IDF cải thiện vượt trội tất cả các chỉ số so với mô hình đơn lẻ.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 5: ARCHITECTURE & FINAL SELECTION -->
+    <div id="page-pipeline" class="section-content">
+      <h2 class="section-title">Kiến Trúc Pipeline Hoàn Chỉnh Được Lựa Chọn</h2>
+      <p>
+        Từ các kết quả thử nghiệm trên, hệ thống <strong>VNLegal RAG</strong> phiên bản chính thức (v1.3) được cấu hình với sơ đồ hoạt động như sau:
+      </p>
+
+      <div class="flow-chart">
+        <div class="flow-node highlight">
+          <div class="flow-node-title">1. Nhập câu hỏi từ người dùng</div>
+          <div class="flow-node-desc">"Hợp đồng lao động thời vụ có bắt buộc đóng BHXH không?"</div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node highlight">
+          <div class="flow-node-title">2. Định tuyến bằng TextCNN (6 lớp)</div>
+          <div class="flow-node-desc">Dự đoán Top-3 chủ đề phù hợp nhất (ví dụ: Labor & Insurance)</div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node highlight">
+          <div class="flow-node-title">3. Trích xuất ứng viên &amp; Chấm điểm Hybrid</div>
+          <div class="flow-node-desc">Chỉ tính toán độ tương đồng trên các tài liệu thuộc 3 chủ đề định tuyến. Điểm số = 0.7 * TF-IDF + 0.3 * Siamese BiLSTM 1L</div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node highlight">
+          <div class="flow-node-title">4. Sắp xếp &amp; Trả về Top-K Tài liệu</div>
+          <div class="flow-node-desc">Xếp hạng giảm dần và chọn ra K đoạn văn bản luật liên quan nhất</div>
+        </div>
+        <div class="flow-arrow">↓</div>
+        <div class="flow-node success">
+          <div class="flow-node-title">5. Tích hợp LLM qua Groq (Tùy chọn)</div>
+          <div class="flow-node-desc">Chuyển ngữ cảnh pháp lý và câu hỏi vào Llama 3 để sinh câu trả lời tự nhiên</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 25px">
+        <h3>Lý do lựa chọn cấu hình này:</h3>
+        <ul style="padding-left: 20px; color: var(--text-muted)">
+          <li style="margin-bottom: 10px">
+            <strong>Định tuyến TextCNN top-3:</strong> Tránh được việc tính toán so khớp dense trên toàn bộ hơn 9,700 văn bản pháp lý của corpus, giúp hệ thống phản hồi cực nhanh trên CPU mà không cần GPU chuyên dụng. Việc lấy top-3 thay vì top-2 giúp hạn chế lỗi lọc sai tài liệu vàng (Gold Passage).
+          </li>
+          <li style="margin-bottom: 10px">
+            <strong>Mô hình Siamese BiLSTM 1 lớp:</strong> Đạt sự cân bằng tối ưu giữa kích thước mô hình (2.18 triệu tham số) và độ chính xác trên bộ dữ liệu 6 lớp nhãn mới.
+          </li>
+          <li style="margin-bottom: 10px">
+            <strong>Chế độ chấm điểm Hybrid:</strong> Giải quyết bài toán "từ đồng nghĩa" và "ngữ nghĩa ẩn" của TF-IDF nhờ bổ sung vector dense từ Siamese, đồng thời duy trì độ chính xác từ khóa cốt lõi của TF-IDF.
+          </li>
+        </ul>
+      </div>
+
+      <h3 style="margin-top: 35px">Hướng dẫn triển khai hệ thống</h3>
+      <p>Để chạy thử nghiệm toàn bộ quy trình hoặc khởi chạy giao diện Demo Web tương tác, sử dụng các câu lệnh sau:</p>
+      
+      <pre><code># Bước 1: Cài đặt các thư viện phụ thuộc
+pip install -r requirements.txt
+
+# Bước 2: Khởi tạo dữ liệu và huấn luyện lại (nếu cần)
+python pipeline_v1.3/prepare_data.py --merge-bottom-k 3
+python pipeline_v1.3/build_shared_embedding.py --max-vocab 8000 --embed-dim 200
+
+# Bước 3: Khởi chạy demo web UI tích hợp Groq RAG
+python pipeline_v1.3/demo_siamese_bilstm1l_ui.py --device cpu --port 8000</code></pre>
+      
+      <p>Sau đó truy cập giao diện hỏi đáp cục bộ tại địa chỉ: <a href="http://127.0.0.1:8000" target="_blank" style="color: var(--primary); text-decoration: underline">http://127.0.0.1:8000</a></p>
+    </div>
+
+    <!-- FOOTER -->
+    <footer>
+      <span>Đồ án môn học: Nhập môn Học Sâu — Nhóm E22CQCNTT01-N</span>
+      <span>Tài liệu kết quả thực nghiệm VNLegal RAG · 2026</span>
+    </footer>
+  </main>
+</div>
+
+<!-- Scripts for interactive controls and Charts -->
+<script>
+  // Section Navigation
+  function switchSection(sectionId) {
+    // Hide all sections
+    document.querySelectorAll('.section-content').forEach(el => {
+      el.classList.remove('active');
+    });
+    // Show selected section
+    document.getElementById(sectionId).classList.add('active');
+    
+    // Update menu links styling
+    document.querySelectorAll('.menu-link').forEach(el => {
+      el.classList.remove('active');
+    });
+    
+    // Find matching link to highlight
+    const links = document.querySelectorAll('.menu-link');
+    if (sectionId === 'page-intro') links[0].classList.add('active');
+    if (sectionId === 'page-data') links[1].classList.add('active');
+    if (sectionId === 'page-experiments') links[2].classList.add('active');
+    if (sectionId === 'page-metrics') links[3].classList.add('active');
+    if (sectionId === 'page-pipeline') links[4].classList.add('active');
+    
+    // Scroll window to top of content
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Table Tabs
+  function switchTableTab(tabId) {
+    document.querySelectorAll('.tab-header').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
+    
+    document.getElementById('tab-hdr-' + tabId).classList.add('active');
+    document.getElementById('tab-pane-' + tabId).classList.add('active');
+  }
+
+  // Theme Toggle
+  function toggleTheme() {
+    const body = document.body;
+    if (body.classList.contains('theme-dark')) {
+      body.classList.remove('theme-dark');
+      body.classList.add('theme-light');
+      localStorage.setItem('theme', 'light');
+    } else {
+      body.classList.remove('theme-light');
+      body.classList.add('theme-dark');
+      localStorage.setItem('theme', 'dark');
+    }
+    
+    // Re-render chart to adjust to theme colors if needed
+    if (window.myChart) {
+      const isDark = body.classList.contains('theme-dark');
+      window.myChart.options.scales.x.grid.color = isDark ? '#26354a' : '#e2e8f0';
+      window.myChart.options.scales.y.grid.color = isDark ? '#26354a' : '#e2e8f0';
+      window.myChart.options.scales.x.ticks.color = isDark ? '#9ca3af' : '#64748b';
+      window.myChart.options.scales.y.ticks.color = isDark ? '#9ca3af' : '#64748b';
+      window.myChart.options.plugins.legend.labels.color = isDark ? '#f3f4f6' : '#0f172a';
+      window.myChart.update();
+    }
+  }
+
+  // Load Saved Theme
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme === 'light') {
+    document.body.classList.remove('theme-dark');
+    document.body.classList.add('theme-light');
+  }
+
+  // ChartJS implementation
+  let myChart = null;
+
+  const chartDataSets = {
+    siamese: {
+      labels: ['LSTM Cosine (Winner)', 'BiLSTM Cosine', 'BiLSTM Euclid', 'LSTM Euclid'],
+      datasets: [
+        {
+          label: 'MRR Score',
+          data: [0.7020, 0.6339, 0.5501, 0.5457],
+          backgroundColor: '#3b82f6',
+          borderRadius: 6,
+        },
+        {
+          label: 'Recall@10',
+          data: [0.8830, 0.8472, 0.7767, 0.7763],
+          backgroundColor: '#10b981',
+          borderRadius: 6,
+        },
+        {
+          label: 'Recall@1',
+          data: [0.6088, 0.5236, 0.4376, 0.4266],
+          backgroundColor: '#f43f5e',
+          borderRadius: 6,
+        }
+      ]
+    },
+    pipelines: {
+      labels: ['Hybrid (top-4, a=0.5)', 'TF-IDF Toàn Corpus', 'TF-IDF + Filter (top-4)', 'TF-IDF + Filter (top-2)', 'Siamese Filter (top-4)'],
+      datasets: [
+        {
+          label: 'MRR Score',
+          data: [0.6766, 0.6768, 0.6307, 0.5827, 0.4303],
+          backgroundColor: '#8b5cf6',
+          borderRadius: 6,
+        },
+        {
+          label: 'Recall@10',
+          data: [0.8623, 0.8887, 0.8288, 0.7670, 0.6352],
+          backgroundColor: '#10b981',
+          borderRadius: 6,
+        },
+        {
+          label: 'Recall@1',
+          data: [0.5777, 0.5670, 0.5272, 0.4865, 0.3333],
+          backgroundColor: '#f59e0b',
+          borderRadius: 6,
+        }
+      ]
+    },
+    v13: {
+      labels: ['Hybrid top-3 (a=0.7)', 'TF-IDF top-3', 'Siamese (No Lọc)', 'Siamese top-3'],
+      datasets: [
+        {
+          label: 'MRR Score',
+          data: [0.6172, 0.5779, 0.4277, 0.4044],
+          backgroundColor: '#f43f5e',
+          borderRadius: 6,
+        },
+        {
+          label: 'Recall@10',
+          data: [0.8200, 0.7800, 0.6250, 0.6350],
+          backgroundColor: '#3b82f6',
+          borderRadius: 6,
+        },
+        {
+          label: 'Recall@1',
+          data: [0.5150, 0.4800, 0.3350, 0.3000],
+          backgroundColor: '#10b981',
+          borderRadius: 6,
+        }
+      ]
+    }
+  };
+
+  function loadChartData(key) {
+    // Update buttons state
+    document.querySelectorAll('.chart-btn').forEach(btn => btn.classList.remove('active'));
+    if (key === 'siamese') document.getElementById('btn-chart-siamese').classList.add('active');
+    if (key === 'pipelines') document.getElementById('btn-chart-pipelines').classList.add('active');
+    if (key === 'v13') document.getElementById('btn-chart-v13').classList.add('active');
+
+    const data = chartDataSets[key];
+    const isDark = document.body.classList.contains('theme-dark');
+    
+    if (myChart) {
+      myChart.destroy();
+    }
+
+    const ctx = document.getElementById('metricsChart').getContext('2d');
+    myChart = new Chart(ctx, {
+      type: 'bar',
+      data: data,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: {
+              color: isDark ? '#f3f4f6' : '#0f172a',
+              font: { family: 'Inter', size: 12 }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: {
+              color: isDark ? '#26354a' : '#e2e8f0'
+            },
+            ticks: {
+              color: isDark ? '#9ca3af' : '#64748b',
+              font: { family: 'Inter', size: 11 }
+            }
+          },
+          y: {
+            min: 0,
+            max: 1.0,
+            grid: {
+              color: isDark ? '#26354a' : '#e2e8f0'
+            },
+            ticks: {
+              color: isDark ? '#9ca3af' : '#64748b',
+              font: { family: 'Inter', size: 11 }
+            }
+          }
+        }
+      }
+    });
+    window.myChart = myChart;
+  }
+
+  // Initialize first chart
+  window.onload = function() {
+    loadChartData('siamese');
+  };
+</script>
+
+</body>
+</html>
