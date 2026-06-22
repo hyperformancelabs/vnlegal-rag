@@ -34,15 +34,7 @@
       "dtype": "int64",
       "_type": "Value"
     },
-    "question_len_char": {
-      "dtype": "int64",
-      "_type": "Value"
-    },
     "question_len_word": {
-      "dtype": "int64",
-      "_type": "Value"
-    },
-    "answer_len_char": {
       "dtype": "int64",
       "_type": "Value"
     },

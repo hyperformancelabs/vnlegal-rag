@@ -18,10 +18,6 @@
       "dtype": "large_string",
       "_type": "Value"
     },
-    "article_len_char": {
-      "dtype": "int64",
-      "_type": "Value"
-    },
     "article_len_word": {
       "dtype": "int64",
       "_type": "Value"
