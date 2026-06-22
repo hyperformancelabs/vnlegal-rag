@@ -205,6 +205,10 @@ def main() -> None:
         with open(out_dir / "label_merge_map.json", "w", encoding="utf-8") as f:
             json.dump(merge_map, f, ensure_ascii=False, indent=2)
 
+    # Pre-build combined text field for retrieval tasks.
+    for df in (train_df, val_df, test_df):
+        df["text"] = df["question"].fillna("") + " " + df["answer"].fillna("")
+
     # Save everything
     _build_label_map(out_dir, train_df)
     for split_name, df in [

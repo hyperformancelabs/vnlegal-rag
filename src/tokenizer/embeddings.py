@@ -70,25 +70,15 @@ def build_embedding_matrix(
 ) -> tuple[torch.Tensor, int]:
     """Build an embedding matrix for the given vocabulary.
 
+    Per Kim (2014) §4.3, OOV words are initialised from ``U[-a, a]`` where
+    ``a`` is chosen so the random vectors have the same variance as the
+    pre-trained ones.
+
     Strategy (per token):
     * ``<PAD>`` → zero vector
-    * ``<UNK>`` → random normal init
+    * ``<UNK>`` → random normal init (no pre-trained UNK exists)
     * in word2vec   → pre-trained vector
-    * not in word2vec → random normal init
-
-    Parameters
-    ----------
-    stoi:
-        String-to-index vocabulary dict.
-    embed_dim:
-        Desired embedding dimension.  When a word2vec file is provided this
-        *must* match the dimension in the file header.
-    w2v_path:
-        Optional path to a word2vec text file.  Omit to random-init all vectors.
-    w2v_encoding:
-        Text encoding of the word2vec file (default ``utf-8``).
-    random_seed:
-        Seed for the random normal init (reproducible).
+    * not in word2vec → ``U[-a, a]`` with matched variance
 
     Returns
     -------
@@ -98,23 +88,37 @@ def build_embedding_matrix(
     """
     rng = np.random.default_rng(random_seed)
     vocab_size = len(stoi)
-    matrix = rng.normal(0.0, 0.02, (vocab_size, embed_dim)).astype(np.float32)
+
+    # Load pre-trained vectors first so we can measure their variance.
+    w2v: dict[str, np.ndarray] = {}
+    if w2v_path is not None:
+        vocab_set = set(stoi) - {PAD_TOKEN, UNK_TOKEN}
+        w2v = load_word2vec_subset(w2v_path, vocab_set, encoding=w2v_encoding)
+
+    # Compute variance of pre-trained vectors for Kim-style OOV init.
+    if w2v:
+        all_w2v = np.stack(list(w2v.values()))
+        w2v_var = float(all_w2v.var())
+        a = float(np.sqrt(3.0 * w2v_var))  # U[-a,a] has variance a²/3
+    else:
+        a = 0.02  # fallback for pure random init
+
+    # Init all vectors with U[-a, a] (Kim 2014).
+    matrix = rng.uniform(-a, a, (vocab_size, embed_dim)).astype(np.float32)
 
     # PAD is always zero.
     pad_idx = stoi.get(PAD_TOKEN, PAD_IDX)
     matrix[pad_idx] = 0.0
 
-    if w2v_path is not None:
-        vocab_set = set(stoi) - {PAD_TOKEN, UNK_TOKEN}
-        w2v = load_word2vec_subset(w2v_path, vocab_set, encoding=w2v_encoding)
+    # UNK stays as uniform init (no pre-trained UNK in word2vec).
 
-        file_dim = matrix.shape[1]
-        hits = 0
-        for word, vec in w2v.items():
-            idx = stoi.get(word)
-            if idx is not None and len(vec) == file_dim:
-                matrix[idx] = vec
-                hits += 1
-        return torch.from_numpy(matrix), hits
+    # Fill in pre-trained vectors.
+    hits = 0
+    file_dim = matrix.shape[1]
+    for word, vec in w2v.items():
+        idx = stoi.get(word)
+        if idx is not None and len(vec) == file_dim:
+            matrix[idx] = vec
+            hits += 1
 
-    return torch.from_numpy(matrix), 0
+    return torch.from_numpy(matrix), hits
