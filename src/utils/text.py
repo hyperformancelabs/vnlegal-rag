@@ -1,12 +1,12 @@
 """Canonical tokenizer for the VNLegal RAG pipeline.
 
-Self-contained copy of the shared ``pipeline_v1.3/tokenizer.py`` so the ``src``
+Self-contained copy of the shared ``experiments/tokenizer.py`` so the ``src``
 package has no sys.path bootstrap dependency. Rules:
 
 * lowercase + strip, then regex ``\\w+`` (Unicode — keeps Vietnamese diacritics)
 * no pyvi / underthesea dependency → runs anywhere
 
-Keep in sync with ``model/tokenizer.py`` and ``pipeline_v1.3/tokenizer.py``.
+Keep in sync with ``model/tokenizer.py`` and ``experiments/tokenizer.py``.
 """
 
 from __future__ import annotations

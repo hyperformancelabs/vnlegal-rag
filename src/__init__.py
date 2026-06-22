@@ -1,6 +1,6 @@
-"""VNLegal RAG — full retrieval pipeline v1.3.
+"""VNLegal RAG — full retrieval pipeline.
 
-Importable package extracted from ``pipeline_v1.3/test-pipeline-v1_3.ipynb`` and
+Importable package extracted from ``experiments/test-pipeline.ipynb`` and
 organized into subpackages (``data``, ``models``, ``retrieval``, ``evaluation``,
 ``utils``) with a top-level :mod:`~src.factory` and :mod:`~src.pipeline`.
 

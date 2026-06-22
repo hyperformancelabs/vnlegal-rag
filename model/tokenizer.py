@@ -12,11 +12,11 @@ Quy tắc:
   • regex \\w+ (bắt ký tự Unicode bao gồm tiếng Việt có dấu)
   • KHÔNG phụ thuộc pyvi / underthesea → chạy ổn trên mọi môi trường
 
-Cách import trong pipeline v1.3 (notebook / Colab / Kaggle):
-    # Thêm pipeline_v1.3 vào sys.path, rồi:
+Cách import trong pipeline  (notebook / Colab / Kaggle):
+    # Thêm experiments vào sys.path, rồi:
     from tokenizer_bootstrap import simple_tokenize, encode_text, build_vocab
 
-Bản sao Colab: pipeline_v1.3/tokenizer.py (giữ đồng bộ với file này).
+Bản sao Colab: experiments/tokenizer.py (giữ đồng bộ với file này).
 
 Cách import trực tiếp (script trong thư mục model/):
     import sys

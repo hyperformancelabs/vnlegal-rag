@@ -1,4 +1,4 @@
-"""End-to-end retrieval pipeline for VNLegal RAG v1.3 — config + orchestrator.
+"""End-to-end retrieval pipeline for VNLegal RAG — config + orchestrator.
 
 ``RetrievalPipeline.from_config`` resolves data + artifacts, loads models, builds
 the TF-IDF index, and (when Siamese weights exist) precomputes document
@@ -81,13 +81,12 @@ class PipelineConfig:
 
     # Data split directory candidates (need qa_train/val/test.csv).
     # ``data/data_ready`` (8-label split) is the default — it matches the
-    # ``model/`` artifacts below; the v1.3 (6-label) splits remain as fallback.
+    # ``model/`` artifacts below; the k-merged (6-label) splits remain as fallback.
     data_ready_candidates: tuple[str, ...] = (
         "data/data_ready",
-        "data/data_ready_v1_3_k3",
-        "data/data_ready_v1_3_k2",
-        "data/data_ready_v1_3",
-        "data/data_ready_v1_3_resplit",
+        "data/data_ready_k3",
+        "data/data_ready_k2",
+        "data/data_ready_resplit",
         "/kaggle/input/datasets/hngphtrn/legals-v3",
         "/kaggle/input/legals-v3",
     )
@@ -96,20 +95,19 @@ class PipelineConfig:
     # ``model/textcnn_artifacts`` (8-label, max_len=128) is the default.
     textcnn_artifact_candidates: tuple[str, ...] = (
         "model/textcnn_artifacts",
-        "pipeline_v1.3/textcnn_artifacts_v1_3",
-        "pipeline_v1.3/textcnn_artifacts",
-        "artifacts/textcnn_v1_3",
-        "/kaggle/working/textcnn_artifacts_v1_3",
+        "experiments/textcnn_artifacts_legacy",
+        "experiments/textcnn_artifacts",
+        "artifacts/textcnn",
+        "/kaggle/working/textcnn_artifacts",
     )
 
     # Siamese encoder artifact directory candidates (optional).
     # ``model/siamese_lstm_traditional_cosine_artifacts`` is the default.
     siamese_artifact_candidates: tuple[str, ...] = (
         "model/siamese_lstm_traditional_cosine_artifacts",
-        "pipeline_v1.3/siamese_bilstm1l_artifacts_v1_3",
-        "pipeline_v1.3/siamese_bilstm2l_artifacts_v1_3",
-        "pipeline_v1.3/siamese_artifacts_v1_3",
-        "pipeline_v1.3/siamese_artifacts",
+        "experiments/siamese_bilstm1l_artifacts",
+        "experiments/siamese_bilstm2l_artifacts",
+        "experiments/siamese_artifacts",
     )
 
     device: torch.device = field(default_factory=default_device)

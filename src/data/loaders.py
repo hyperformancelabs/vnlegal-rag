@@ -19,7 +19,7 @@ def locate_repo_root(start: Path | None = None) -> Path:
     """Walk parents from ``start`` (or this file) until the repo markers appear."""
     here = (start or Path(__file__)).resolve()
     for candidate in [here, *here.parents]:
-        if (candidate / "pipeline_v1.3").is_dir() and (candidate / "src").is_dir():
+        if (candidate / "experiments").is_dir() and (candidate / "src").is_dir():
             return candidate
         if (candidate / "model" / "tokenizer.py").is_file():
             return candidate

@@ -51,12 +51,12 @@ python -m model.standard_pipeline
 
 This command executes data preparation, rebuilds shared embedding artifacts, validates required outputs, and writes a run report to `artifacts/pipeline_runs/`.
 
-## Siamese BiLSTM v1.3 Demo UI
+## Siamese BiLSTM  Demo UI
 
 Run a local HTML demo page for the Siamese BiLSTM 1-layer retrieval pipeline:
 
 ```bash
-python pipeline_v1.3/demo_siamese_bilstm1l_ui.py
+python experiments/demo_siamese_bilstm1l_ui.py
 ```
 
 Then open:
@@ -68,7 +68,7 @@ http://127.0.0.1:8000
 Useful overrides:
 
 ```bash
-python pipeline_v1.3/demo_siamese_bilstm1l_ui.py --top-k 5 --max-docs 4000 --device cpu --port 8001
+python experiments/demo_siamese_bilstm1l_ui.py --top-k 5 --max-docs 4000 --device cpu --port 8001
 ```
 
 ## Train
