@@ -60,7 +60,6 @@ def locate_tokenizer_path(start: Path | None = None) -> Path:
     candidates: list[Path] = [_PIPELINE_DIR / "tokenizer.py"]
     for root in _search_roots(start):
         candidates.append(root / "experiments" / "tokenizer.py")
-        candidates.append(root / "model" / "tokenizer.py")
 
     seen: set[Path] = set()
     for path in candidates:

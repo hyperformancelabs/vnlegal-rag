@@ -92,19 +92,17 @@ class PipelineConfig:
     )
 
     # TextCNN topic-classifier artifact directory candidates.
-    # ``model/textcnn_artifacts`` (8-label, max_len=128) is the default.
+    # ``experiments/textcnn_artifacts`` (6-label, max_len=128) is the default.
     textcnn_artifact_candidates: tuple[str, ...] = (
-        "model/textcnn_artifacts",
-        "experiments/textcnn_artifacts_legacy",
         "experiments/textcnn_artifacts",
+        "experiments/textcnn_artifacts_legacy",
         "artifacts/textcnn",
         "/kaggle/working/textcnn_artifacts",
     )
 
     # Siamese encoder artifact directory candidates (optional).
-    # ``model/siamese_lstm_traditional_cosine_artifacts`` is the default.
+    # ``experiments/siamese_bilstm1l_artifacts`` is the default.
     siamese_artifact_candidates: tuple[str, ...] = (
-        "model/siamese_lstm_traditional_cosine_artifacts",
         "experiments/siamese_bilstm1l_artifacts",
         "experiments/siamese_bilstm2l_artifacts",
         "experiments/siamese_artifacts",

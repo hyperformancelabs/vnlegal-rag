@@ -21,7 +21,7 @@ def locate_repo_root(start: Path | None = None) -> Path:
     for candidate in [here, *here.parents]:
         if (candidate / "experiments").is_dir() and (candidate / "src").is_dir():
             return candidate
-        if (candidate / "model" / "tokenizer.py").is_file():
+        if (candidate / "experiments" / "tokenizer.py").is_file():
             return candidate
     # No repo markers found (e.g. installed as a library) — cwd is the best guess.
     import warnings

@@ -1,7 +1,7 @@
 """
 Build shared vocab + random embedding init from data_ready (pipeline ).
 
-Self-contained for Colab/Kaggle (no dependency on model/build_shared_embedding.py).
+Self-contained for Colab/Kaggle.
 Default output: experiments/shared_embedding_artifacts/
 
 Run from experiments/:
