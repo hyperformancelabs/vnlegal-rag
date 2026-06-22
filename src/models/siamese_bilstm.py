@@ -12,9 +12,11 @@ import torch.nn.functional as F
 
 
 class SiameseBiLSTMEncoder(nn.Module):
-    """4 BiLSTM layers → masked mean-pool → dense → L2-normalized embedding.
+    """BiLSTM → masked mean-pool → dense projection (no L2-norm on output).
 
-    Paper: hidden_dim=64 per direction → 128-d after concat, dense_dim=128.
+    Paper: hidden_dim=64 / direction → 128-d after concat. The dense layer
+    maps to dense_dim (paper: 128). The encoder output is NOT L2-normalized;
+    cosine similarity is computed explicitly in :class:`SiameseBiLSTM.forward`.
     """
 
     def __init__(
@@ -59,7 +61,7 @@ class SiameseBiLSTMEncoder(nn.Module):
         counts = mask.sum(dim=1).clamp(min=1e-9)
         pooled = summed / counts
         projected = self.dense(self.out_dropout(pooled))
-        return F.normalize(projected, p=2, dim=1)
+        return projected
 
 
 class SiameseBiLSTM(nn.Module):
@@ -72,11 +74,20 @@ class SiameseBiLSTM(nn.Module):
     def forward(self, q: torch.Tensor, a: torch.Tensor) -> torch.Tensor:
         q_emb = self.encoder(q)
         a_emb = self.encoder(a)
-        return (q_emb * a_emb).sum(dim=1)
+        # Explicit cosine similarity (paper §3.1 eq. for E_W)
+        return (q_emb * a_emb).sum(dim=1) / (
+            q_emb.norm(p=2, dim=1) * a_emb.norm(p=2, dim=1)
+        )
 
 
 class ContrastiveLoss(nn.Module):
-    """Paper §3.1: L+ = scale*(1-cos)^2, L- = cos^2 when cos < margin."""
+    """Paper §3.1 adapted for word-level: L+ = scale*(1-cos)^2, L- = max(0, cos - m)^2.
+
+    The paper's original L- = cos² (when cos < m, else 0) has a dead zone when
+    all initial cos > margin (common with word-level embeddings). The adapted
+    formulation penalises negatives whose cosine is ABOVE the margin instead.
+    Equivalent behaviour once negatives are pushed below margin.
+    """
 
     def __init__(self, margin: float = 0.5, positive_scale: float = 0.25):
         super().__init__()
@@ -87,8 +98,6 @@ class ContrastiveLoss(nn.Module):
         pos_mask = labels == 1
         neg_mask = labels == 0
         loss_pos = self.positive_scale * (1 - cos_sim[pos_mask]) ** 2
-        cos_neg = cos_sim[neg_mask]
-        below = torch.where(cos_neg < self.margin)[0]
-        loss_neg = cos_neg[below] ** 2 if below.numel() > 0 else torch.zeros(1, device=cos_sim.device).sum()
+        loss_neg = torch.relu(cos_sim[neg_mask] - self.margin) ** 2
         total = pos_mask.sum().float() + neg_mask.sum().float().clamp(min=1)
         return (loss_pos.sum() + loss_neg.sum()) / total
