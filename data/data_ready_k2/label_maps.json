@@ -1,0 +1,29 @@
+{
+  "label_list": [
+    "Civil & Investment",
+    "Finance & Banking",
+    "Justice & Dispute Resolution",
+    "Labor & Insurance",
+    "State Organization & Admin",
+    "Transportation",
+    "other"
+  ],
+  "label2id": {
+    "Civil & Investment": 0,
+    "Finance & Banking": 1,
+    "Justice & Dispute Resolution": 2,
+    "Labor & Insurance": 3,
+    "State Organization & Admin": 4,
+    "Transportation": 5,
+    "other": 6
+  },
+  "id2label": {
+    "0": "Civil & Investment",
+    "1": "Finance & Banking",
+    "2": "Justice & Dispute Resolution",
+    "3": "Labor & Insurance",
+    "4": "State Organization & Admin",
+    "5": "Transportation",
+    "6": "other"
+  }
+}
