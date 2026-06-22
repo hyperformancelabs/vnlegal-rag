@@ -119,7 +119,7 @@ def _apply_merge(df: pd.DataFrame, merge_map: dict[str, str]) -> pd.DataFrame:
     """Apply domain merge mapping to a dataframe."""
     out = df.copy()
     out["macro_domain"] = out["macro_domain"].astype(str).map(
-        lambda d: merge_map.get(d, d)
+        lambda d: merge_map.get(str(d), str(d))
     )
     return out
 
