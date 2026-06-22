@@ -76,35 +76,14 @@ class SiameseBiLSTM(nn.Module):
 
 
 class ContrastiveLoss(nn.Module):
-    """Paper §3.1 contrastive loss + BCE fallback for dead-zone safety.
+    """Paper §3.1: L+ = scale*(1-cos)^2, L- = cos^2 when cos < margin."""
 
-    The original formulation (L- = cos² when cos < margin, 0 otherwise)
-    has a dead zone: once all negatives exceed the margin, gradients stop.
-    BCE mode (`use_bce=True`) replaces it with binary cross-entropy on
-    cosine similarity, which always provides gradient — recommended for
-    random-negative setups where the model can trivially push all cos > margin.
-    """
-
-    def __init__(
-        self,
-        margin: float = 0.5,
-        positive_scale: float = 0.25,
-        use_bce: bool = True,
-        bce_scale: float = 5.0,
-    ):
+    def __init__(self, margin: float = 0.5, positive_scale: float = 0.25):
         super().__init__()
         self.margin = margin
         self.positive_scale = positive_scale
-        self.use_bce = use_bce
-        self.bce_scale = bce_scale
 
     def forward(self, cos_sim: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
-        if self.use_bce:
-            # BCE: cos ∈ [-1,1] → scale into logit space → always has gradient
-            logits = cos_sim * self.bce_scale
-            return F.binary_cross_entropy_with_logits(logits, labels)
-
-        # Original contrastive (Neculoiu 2016) — dead zone risk
         pos_mask = labels == 1
         neg_mask = labels == 0
         loss_pos = self.positive_scale * (1 - cos_sim[pos_mask]) ** 2
