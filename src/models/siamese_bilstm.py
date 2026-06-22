@@ -81,18 +81,37 @@ class SiameseBiLSTM(nn.Module):
 
 
 class ContrastiveLoss(nn.Module):
-    """Paper §3.1 adapted for word-level: L+ = scale*(1-cos)^2, L- = max(0, cos - m)^2.
+    """Paper §3.1 adapted for word-level: L+ = scale*(1-cos)^2, L- = relu(cos - m)^2.
 
-    The paper's original L- = cos² (when cos < m, else 0) has a dead zone when
-    all initial cos > margin (common with word-level embeddings). The adapted
-    formulation penalises negatives whose cosine is ABOVE the margin instead.
-    Equivalent behaviour once negatives are pushed below margin.
+    The margin can be annealed: start high (m_start) and decay to m_end
+    over `m_anneal_epochs` epochs. A higher initial margin pushes the model
+    to separate all pairs; decay tightens the requirement over time.
     """
 
-    def __init__(self, margin: float = 0.5, positive_scale: float = 0.25):
+    def __init__(
+        self,
+        margin: float = 0.5,
+        positive_scale: float = 0.25,
+        margin_start: float | None = None,
+        margin_end: float | None = None,
+        margin_anneal_epochs: int = 10,
+    ):
         super().__init__()
         self.margin = margin
         self.positive_scale = positive_scale
+        self.margin_start = margin_start if margin_start is not None else margin
+        self.margin_end = margin_end if margin_end is not None else margin
+        self.margin_anneal_epochs = margin_anneal_epochs
+        self._epoch = 0
+
+    def set_epoch(self, epoch: int) -> None:
+        """Update the margin based on the current epoch (linear decay)."""
+        self._epoch = epoch
+        if epoch >= self.margin_anneal_epochs:
+            self.margin = self.margin_end
+        else:
+            t = epoch / max(self.margin_anneal_epochs, 1)
+            self.margin = self.margin_start + (self.margin_end - self.margin_start) * t
 
     def forward(self, cos_sim: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
         pos_mask = labels == 1
