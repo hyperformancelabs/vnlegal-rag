@@ -19,8 +19,8 @@ from .models.bi_encoder import (
     infer_siamese_config,
 )
 from .models.classifier import build_textcnn_from_state_dict
+from .tokenizer import load_vocab
 from .utils.io import read_json
-from .utils.text import load_vocab
 
 WEIGHT_EXTENSIONS: tuple[str, ...] = (".pt", ".pth")
 

@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from .device import default_device
-from .io import read_json, read_ready_csv
-from .text import (
+from ..tokenizer import (
     PAD_TOKEN,
     TOKENIZER_BACKEND,
     UNK_TOKEN,
@@ -15,6 +13,8 @@ from .text import (
     save_vocab,
     simple_tokenize,
 )
+from .device import default_device
+from .io import read_json, read_ready_csv
 
 __all__ = [
     "default_device",

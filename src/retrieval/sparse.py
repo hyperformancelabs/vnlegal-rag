@@ -14,7 +14,7 @@ from scipy.sparse import spmatrix
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.preprocessing import normalize
 
-from ..utils.text import encode_text, simple_tokenize
+from ..tokenizer import encode_text, simple_tokenize
 
 
 # ── Index construction ───────────────────────────────────────────────────────

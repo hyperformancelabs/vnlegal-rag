@@ -214,3 +214,7 @@ __marimo__/
 plans/
 
 .vscode/
+
+# Large pre-trained data files (track split parts instead)
+data/word2vec/word2vec_vi_syllables_300dims.txt
+data/word2vec/word2vec_vi_syllables_300dims.zip

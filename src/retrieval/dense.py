@@ -9,7 +9,7 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from ..utils.text import encode_with_mask
+from ..tokenizer import encode_with_mask
 
 
 @torch.no_grad()

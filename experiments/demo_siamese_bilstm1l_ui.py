@@ -34,15 +34,16 @@ import torch.nn.functional as F
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
-sys.path.insert(0, str(REPO_ROOT / "experiments"))
 DEFAULT_ARTIFACT_DIR = REPO_ROOT / "experiments" / "siamese_bilstm1L_artifacts"
 DEFAULT_TEXTCNN_ARTIFACT_DIR = REPO_ROOT / "experiments" / "textcnn_artifacts"
 _corpus_full = REPO_ROOT / "data" / "data_ready" / "corpus_ready_full.csv"
 _corpus_train = REPO_ROOT / "data" / "data_ready" / "corpus_train.csv"
 DEFAULT_DATA_PATH = _corpus_full if _corpus_full.is_file() else _corpus_train
 
+from src.tokenizer import simple_tokenize
 
-def _load_env_file(path: Path, *, override: bool = False) -> None:
+
+def select_topic_labels(path: Path, *, override: bool = False) -> None:
     """Minimal .env loader (KEY=VALUE per line). Does not require python-dotenv.
 
     Supports:
@@ -100,8 +101,6 @@ def _bootstrap_env() -> None:
 
 
 _bootstrap_env()
-
-from tokenizer_bootstrap import simple_tokenize
 
 
 def select_topic_labels(topic_prediction: dict[str, Any], min_prob: float = 0.12, max_topics: int = 3) -> list[str]:

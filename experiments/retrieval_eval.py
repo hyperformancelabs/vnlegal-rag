@@ -21,7 +21,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-from tokenizer_bootstrap import encode_text
+from src.tokenizer import encode_text
 
 EncodeQueryFn = Callable[[str], np.ndarray]
 
