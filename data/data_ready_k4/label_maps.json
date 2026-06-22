@@ -1,0 +1,23 @@
+{
+  "label_list": [
+    "Finance & Banking",
+    "Justice & Dispute Resolution",
+    "State Organization & Admin",
+    "Transportation",
+    "other"
+  ],
+  "label2id": {
+    "Finance & Banking": 0,
+    "Justice & Dispute Resolution": 1,
+    "State Organization & Admin": 2,
+    "Transportation": 3,
+    "other": 4
+  },
+  "id2label": {
+    "0": "Finance & Banking",
+    "1": "Justice & Dispute Resolution",
+    "2": "State Organization & Admin",
+    "3": "Transportation",
+    "4": "other"
+  }
+}
