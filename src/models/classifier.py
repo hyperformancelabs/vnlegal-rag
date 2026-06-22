@@ -14,13 +14,21 @@ import torch.nn.functional as F
 
 
 class TextCNN(nn.Module):
-    """Convolutional topic classifier (filter sizes 3/4/5, max-over-time pool)."""
+    """Convolutional topic classifier (filter sizes 3/4/5, max-over-time pool).
+
+    When ``embedding_weight`` is provided the embedding layer is initialised
+    via :func:`torch.nn.Embedding.from_pretrained` (word2vec, PhoBERT, etc.).
+    Otherwise a randomly-initialised ``nn.Embedding`` is used.
+    """
 
     def __init__(
         self,
         vocab_size: int,
         embed_dim: int,
         num_classes: int,
+        *,
+        embedding_weight: torch.Tensor | None = None,
+        freeze_embedding: bool = False,
         filter_sizes: tuple[int, ...] = (3, 4, 5),
         num_filters: int = 100,
         dropout: float = 0.0,
@@ -28,7 +36,12 @@ class TextCNN(nn.Module):
         pad_idx: int = 0,
     ):
         super().__init__()
-        self.embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=pad_idx)
+        if embedding_weight is not None:
+            self.embedding = nn.Embedding.from_pretrained(
+                embedding_weight, freeze=freeze_embedding, padding_idx=pad_idx,
+            )
+        else:
+            self.embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=pad_idx)
         self.embed_dropout = nn.Dropout(embed_dropout)
         self.convs = nn.ModuleList(
             [nn.Conv1d(embed_dim, num_filters, fs) for fs in filter_sizes]
