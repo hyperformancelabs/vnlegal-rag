@@ -6,6 +6,10 @@ Trained with contrastive loss: L+ = 0.25*(1-cos)^2, L- = cos^2 (if cos < margin)
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+from typing import Any
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -53,15 +57,30 @@ class SiameseBiLSTMEncoder(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         mask = (x != self.pad_idx).float()
-        emb = self.embedding(x)
+        return self._pool_and_project(x, mask)
+
+    def encode(self, ids: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        """Encode with explicit mask → L2-normalized (for :mod:`src.retrieval.dense`).
+
+        The :mod:`dense` module calls ``model.encode(ids, mask)`` when
+        precomputing corpus embeddings and encoding query vectors. This
+        method follows that contract and returns unit-norm vectors so dot
+        product equals cosine similarity.
+        """
+        vec = self._pool_and_project(ids, mask.to(dtype=torch.float32))
+        return F.normalize(vec, p=2, dim=1)
+
+    def _pool_and_project(
+        self, ids: torch.Tensor, mask: torch.Tensor,
+    ) -> torch.Tensor:
+        emb = self.embedding(ids)
         out, _ = self.lstm(emb)
         out = self.inter_dropout(out)
         mask = mask.unsqueeze(-1)
         summed = (out * mask).sum(dim=1)
         counts = mask.sum(dim=1).clamp(min=1e-9)
         pooled = summed / counts
-        projected = self.dense(self.out_dropout(pooled))
-        return projected
+        return self.dense(self.out_dropout(pooled))
 
 
 class SiameseBiLSTM(nn.Module):
@@ -70,6 +89,10 @@ class SiameseBiLSTM(nn.Module):
     def __init__(self, **encoder_kwargs):
         super().__init__()
         self.encoder = SiameseBiLSTMEncoder(**encoder_kwargs)
+
+    def encode(self, ids: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        """Proxy to :meth:`SiameseBiLSTMEncoder.encode` for pipeline API."""
+        return self.encoder.encode(ids, mask)
 
     def forward(self, q: torch.Tensor, a: torch.Tensor) -> torch.Tensor:
         q_emb = self.encoder(q)
@@ -120,3 +143,45 @@ class ContrastiveLoss(nn.Module):
         loss_neg = torch.relu(cos_sim[neg_mask] - self.margin) ** 2
         total = pos_mask.sum().float() + neg_mask.sum().float().clamp(min=1)
         return (loss_pos.sum() + loss_neg.sum()) / total
+
+
+def load_siamese_from_artifacts(
+    artifact_dir: str | Path,
+    device: torch.device | str = "cpu",
+) -> tuple[SiameseBiLSTM, dict[str, int], dict[str, Any]]:
+    """Load a trained SiameseBiLSTM + stoi + metadata from an artifact directory.
+
+    Expected files (as saved by the ``siamese-bilstm*.ipynb`` notebooks):
+
+    * ``stoi.pt`` – ``torch.save(stoi)`` word→index mapping
+    * ``siamese_bilstm_best.pt`` – full model state dict
+    * ``metadata.json`` – hyperparameters and eval results
+
+    Returns ``(model, stoi, metadata)``. The model is set to ``eval()`` mode
+    and moved to ``device``.
+    """
+    root = Path(artifact_dir)
+    stoi: dict[str, int] = torch.load(
+        root / "stoi.pt", map_location="cpu", weights_only=False,
+    )
+    with open(root / "metadata.json", encoding="utf-8") as f:
+        meta: dict[str, Any] = json.load(f)
+
+    state = torch.load(
+        root / "siamese_bilstm_best.pt", map_location="cpu", weights_only=True,
+    )
+    model = SiameseBiLSTM(
+        vocab_size=meta["vocab_size"],
+        embed_dim=meta["embed_dim"],
+        hidden_dim=meta["hidden_dim"],
+        num_layers=meta["num_layers"],
+        dense_dim=meta["dense_dim"],
+        dropout_recurrent=meta["dropout_recurrent"],
+        dropout_inter=meta["dropout_inter"],
+        dropout_out=meta["dropout_out"],
+        pad_idx=stoi.get("<PAD>", 0),
+    )
+    model.load_state_dict(state, strict=True)
+    model.to(device)
+    model.eval()
+    return model, stoi, meta

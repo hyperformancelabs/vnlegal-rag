@@ -38,7 +38,14 @@ def _warmup_torch_conv_backend() -> None:
 _warmup_torch_conv_backend()
 
 from .evaluation import build_markdown_table, evaluate_retriever
-from .models import LSTMEncoder, SiameseLSTM, TextCNN
+from .models import (
+    LSTMEncoder,
+    SiameseBiLSTM,
+    SiameseLSTM,
+    TextCNN,
+    load_siamese_from_artifacts,
+    load_textcnn_from_artifacts,
+)
 from .pipeline import PipelineConfig, RetrievalPipeline, seed_everything
 from .tokenizer import (
     PAD_TOKEN,
@@ -65,6 +72,9 @@ __all__ = [
     "TextCNN",
     "LSTMEncoder",
     "SiameseLSTM",
+    "SiameseBiLSTM",
+    "load_siamese_from_artifacts",
+    "load_textcnn_from_artifacts",
     # tokenizer
     "simple_tokenize",
     "encode_text",

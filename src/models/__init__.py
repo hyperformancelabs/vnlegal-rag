@@ -12,8 +12,8 @@ from .bi_encoder import (
     add_encoder_prefix_if_needed,
     infer_siamese_config,
 )
-from .classifier import TextCNN, build_textcnn_from_state_dict
-from .siamese_bilstm import SiameseBiLSTM, SiameseBiLSTMEncoder, ContrastiveLoss
+from .classifier import TextCNN, build_textcnn_from_state_dict, load_textcnn_from_artifacts
+from .siamese_bilstm import SiameseBiLSTM, SiameseBiLSTMEncoder, ContrastiveLoss, load_siamese_from_artifacts
 
 __all__ = [
     "TextCNN",
@@ -25,4 +25,6 @@ __all__ = [
     "SiameseBiLSTM",
     "SiameseBiLSTMEncoder",
     "ContrastiveLoss",
+    "load_siamese_from_artifacts",
+    "load_textcnn_from_artifacts",
 ]

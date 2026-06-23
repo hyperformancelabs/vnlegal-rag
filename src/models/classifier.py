@@ -8,6 +8,10 @@ directly from saved weights, so checkpoints load without a separate config file.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+from typing import Any
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -76,3 +80,36 @@ def build_textcnn_from_state_dict(state: dict, num_classes: int) -> TextCNN:
         embed_dropout=0.0,
         pad_idx=0,
     )
+
+
+def load_textcnn_from_artifacts(
+    artifact_dir: str | Path,
+    device: torch.device | str = "cpu",
+) -> tuple[TextCNN, dict[str, int], list[str], dict[str, Any]]:
+    """Load a trained TextCNN + stoi + labels + metadata from an artifact directory.
+
+    Expected files (as saved by the ``textcnn*.ipynb`` notebooks):
+
+    * ``tokenizer_vocab.json`` – ``{"stoi": {...}, "itos": {...}}``
+    * ``textcnn_best.pt`` – full model state dict
+    * ``metadata.json`` – hyperparameters, labels, and eval results
+
+    Returns ``(model, stoi, labels, metadata)``. The model is set to ``eval()``
+    mode and moved to ``device``.
+    """
+    root = Path(artifact_dir)
+    with open(root / "tokenizer_vocab.json", encoding="utf-8") as f:
+        vocab_data: dict[str, Any] = json.load(f)
+    stoi: dict[str, int] = vocab_data["stoi"]
+
+    with open(root / "metadata.json", encoding="utf-8") as f:
+        meta: dict[str, Any] = json.load(f)
+
+    state = torch.load(
+        root / "textcnn_best.pt", map_location="cpu", weights_only=True,
+    )
+    model = build_textcnn_from_state_dict(state, num_classes=meta["num_classes"])
+    model.load_state_dict(state, strict=True)
+    model.to(device)
+    model.eval()
+    return model, stoi, meta["labels"], meta
