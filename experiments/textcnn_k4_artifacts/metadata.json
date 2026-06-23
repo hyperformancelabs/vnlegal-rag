@@ -1,0 +1,110 @@
+{
+  "model_name": "TextCNN",
+  "reference": "Kim 2014",
+  "max_len": 256,
+  "filter_sizes": [
+    3,
+    4,
+    5
+  ],
+  "num_filters": 100,
+  "dropout": 0.5,
+  "vocab_size": 2331,
+  "embed_dim": 300,
+  "num_classes": 5,
+  "labels": [
+    "Finance & Banking",
+    "Justice & Dispute Resolution",
+    "State Organization & Admin",
+    "Transportation",
+    "other"
+  ],
+  "label2id": {
+    "Finance & Banking": 0,
+    "Justice & Dispute Resolution": 1,
+    "State Organization & Admin": 2,
+    "Transportation": 3,
+    "other": 4
+  },
+  "pad_token": "<PAD>",
+  "unk_token": "<UNK>",
+  "pad_idx": 0,
+  "best_val_macro_f1": 0.838990434489887,
+  "test_acc_top1": 0.7962570786476135,
+  "test_acc_top3": 0.9311440587043762,
+  "test_macro_f1": 0.7601992600539711,
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 0.5685908721323218,
+      "val_loss": 0.6266323051561083,
+      "val_acc_top1": 0.8159889578819275,
+      "val_acc_top3": 0.9886285066604614,
+      "val_macro_f1": 0.823550362514393
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.3463485489853404,
+      "val_loss": 0.6652818321154743,
+      "val_acc_top1": 0.8166781663894653,
+      "val_acc_top3": 0.9331495761871338,
+      "val_macro_f1": 0.8184894924116313
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.32648133693271847,
+      "val_loss": 0.6596834437753479,
+      "val_acc_top1": 0.8046175241470337,
+      "val_acc_top3": 0.9476223587989807,
+      "val_macro_f1": 0.7974998550398306
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.31526196766097253,
+      "val_loss": 0.6567408997157292,
+      "val_acc_top1": 0.8163335919380188,
+      "val_acc_top3": 0.9569262862205505,
+      "val_macro_f1": 0.8179553456687305
+    },
+    {
+      "epoch": 5,
+      "train_loss": 0.3063444209896838,
+      "val_loss": 0.5817998074749927,
+      "val_acc_top1": 0.8297725915908813,
+      "val_acc_top3": 0.9927636384963989,
+      "val_macro_f1": 0.838990434489887
+    },
+    {
+      "epoch": 6,
+      "train_loss": 0.3004905604454991,
+      "val_loss": 0.6376098134881624,
+      "val_acc_top1": 0.8263266682624817,
+      "val_acc_top3": 0.9679531455039978,
+      "val_macro_f1": 0.8253088464771627
+    },
+    {
+      "epoch": 7,
+      "train_loss": 0.29460968321249126,
+      "val_loss": 0.6008762099429051,
+      "val_acc_top1": 0.8273604512214661,
+      "val_acc_top3": 0.9865610003471375,
+      "val_macro_f1": 0.8381559816595235
+    },
+    {
+      "epoch": 8,
+      "train_loss": 0.2886917963891366,
+      "val_loss": 0.6422001931541628,
+      "val_acc_top1": 0.8170227408409119,
+      "val_acc_top3": 0.9634734392166138,
+      "val_macro_f1": 0.819028733979384
+    },
+    {
+      "epoch": 9,
+      "train_loss": 0.285489772029491,
+      "val_loss": 0.657131344675607,
+      "val_acc_top1": 0.8104755282402039,
+      "val_acc_top3": 0.978290855884552,
+      "val_macro_f1": 0.813594662946357
+    }
+  ]
+}
