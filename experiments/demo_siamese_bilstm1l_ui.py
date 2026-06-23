@@ -28,22 +28,26 @@ import urllib.error
 import urllib.request
 
 import pandas as pd
+import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from scipy.sparse import csr_matrix
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
-DEFAULT_ARTIFACT_DIR = REPO_ROOT / "experiments" / "siamese_bilstm1L_artifacts"
-DEFAULT_TEXTCNN_ARTIFACT_DIR = REPO_ROOT / "experiments" / "textcnn_artifacts"
-_corpus_full = REPO_ROOT / "data" / "data_ready" / "corpus_ready_full.csv"
-_corpus_train = REPO_ROOT / "data" / "data_ready" / "corpus_train.csv"
+DEFAULT_ARTIFACT_DIR = REPO_ROOT / "experiments" / "siamese_256_artifacts"
+DEFAULT_TEXTCNN_ARTIFACT_DIR = REPO_ROOT / "experiments" / "textcnn_k4_artifacts"
+_corpus_full = REPO_ROOT / "data" / "data_ready_k4" / "corpus_full.csv"
+_corpus_train = REPO_ROOT / "data" / "data_ready_k4" / "corpus_train.csv"
 DEFAULT_DATA_PATH = _corpus_full if _corpus_full.is_file() else _corpus_train
 
+from src.models.siamese_bilstm import SiameseBiLSTM, load_siamese_from_artifacts
+from src.models.classifier import TextCNN, load_textcnn_from_artifacts
 from src.tokenizer import simple_tokenize
 
 
-def select_topic_labels(path: Path, *, override: bool = False) -> None:
+def _load_env_file(path: Path, *, override: bool = False) -> None:
     """Minimal .env loader (KEY=VALUE per line). Does not require python-dotenv.
 
     Supports:
@@ -444,77 +448,6 @@ HTML_PAGE = """<!doctype html>
 </html>
 """
 
-class SiameseBiLSTMEncoder(nn.Module):
-    def __init__(
-        self,
-        embedding_weight: torch.Tensor,
-        hidden_size: int,
-        num_layers: int,
-        dropout: float,
-        bidirectional: bool,
-        pad_idx: int,
-    ) -> None:
-        super().__init__()
-        self.pad_idx = int(pad_idx)
-        self.embedding = nn.Embedding.from_pretrained(
-            embedding_weight, freeze=False, padding_idx=self.pad_idx
-        )
-        self.lstm = nn.LSTM(
-            input_size=embedding_weight.shape[1],
-            hidden_size=hidden_size,
-            num_layers=num_layers,
-            dropout=dropout if num_layers > 1 else 0.0,
-            bidirectional=bidirectional,
-            batch_first=True,
-        )
-
-    def forward(self, token_ids: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-        x = self.embedding(token_ids)
-        out, _ = self.lstm(x)
-        mask = mask.unsqueeze(-1)
-        pooled = (out * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1e-6)
-        return F.normalize(pooled, p=2, dim=-1)
-
-
-class TextCNNClassifier(nn.Module):
-    def __init__(
-        self,
-        embedding_weight: torch.Tensor,
-        num_classes: int,
-        kernel_sizes: list[int],
-        num_filters: int,
-        dropout: float,
-        pad_idx: int,
-    ) -> None:
-        super().__init__()
-        self.embedding = nn.Embedding.from_pretrained(
-            embedding_weight, freeze=False, padding_idx=pad_idx
-        )
-        self.convs = nn.ModuleList(
-            [
-                nn.Conv1d(
-                    in_channels=embedding_weight.shape[1],
-                    out_channels=num_filters,
-                    kernel_size=k,
-                )
-                for k in kernel_sizes
-            ]
-        )
-        self.dropout = nn.Dropout(dropout)
-        self.fc = nn.Linear(num_filters * len(kernel_sizes), num_classes)
-
-    def forward(self, token_ids: torch.Tensor) -> torch.Tensor:
-        x = self.embedding(token_ids)
-        x = x.transpose(1, 2)
-        features = []
-        for conv in self.convs:
-            c = F.relu(conv(x))
-            p = F.max_pool1d(c, kernel_size=c.size(2)).squeeze(2)
-            features.append(p)
-        cat = torch.cat(features, dim=1)
-        return self.fc(self.dropout(cat))
-
-
 class SiameseBiLSTMDemo:
     def __init__(
         self,
@@ -534,11 +467,11 @@ class SiameseBiLSTMDemo:
         self.max_q_len = int(max_q_len)
         self.device = torch.device(device)
 
-        self.stoi: dict[str, int] = {}
+        self.siamese_stoi: dict[str, int] = {}
         self.pad_idx = 0
         self.unk_idx = 1
-        self.model: SiameseBiLSTMEncoder | None = None
-        self.textcnn_model: TextCNNClassifier | None = None
+        self.model: SiameseBiLSTM | None = None
+        self.textcnn_model: TextCNN | None = None
         self.textcnn_stoi: dict[str, int] = {}
         self.textcnn_pad_idx = 0
         self.textcnn_unk_idx = 1
@@ -546,18 +479,20 @@ class SiameseBiLSTMDemo:
         self.textcnn_labels: list[str] = []
         self.corpus_df = pd.DataFrame()
         self.doc_embeddings: torch.Tensor | None = None
+        self.tfidf_vectorizer: TfidfVectorizer | None = None
+        self.tfidf_matrix: csr_matrix | None = None
         self.groq_api_key = os.environ.get("GROQ_API_KEY", "").strip()
         self.groq_model = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile").strip()
-        self.answer_top_k = int(os.environ.get("ANSWER_TOP_K", "3"))
-        self.answer_min_rating = float(os.environ.get("ANSWER_MIN_RATING", "6"))
-        self.answer_ctx_char_limit = int(os.environ.get("ANSWER_CTX_CHAR_LIMIT", "1800"))
+        self.answer_top_k = int(os.environ.get("ANSWER_TOP_K", "5"))
+        self.answer_ctx_char_limit = int(os.environ.get("ANSWER_CTX_CHAR_LIMIT", "2000"))
         self.min_query_words = int(os.environ.get("MIN_QUERY_WORDS", "4"))
         self.min_topic_confidence = float(os.environ.get("MIN_TOPIC_CONFIDENCE", "0.35"))
         self.min_retrieval_score = float(os.environ.get("MIN_RETRIEVAL_SCORE", "0.45"))
 
     def _encode_text(self, text: str, max_len: int) -> tuple[list[int], list[float]]:
+        """Encode a single text to padded ids + float mask."""
         tokens = simple_tokenize(text)
-        ids = [self.stoi.get(tok, self.unk_idx) for tok in tokens[:max_len]]
+        ids = [self.siamese_stoi.get(tok, self.unk_idx) for tok in tokens[:max_len]]
         length = len(ids)
         if length < max_len:
             ids.extend([self.pad_idx] * (max_len - length))
@@ -575,70 +510,30 @@ class SiameseBiLSTMDemo:
                 pair = [self._encode_text(t, self.max_d_len) for t in chunk]
                 ids = torch.tensor([p[0] for p in pair], dtype=torch.long, device=self.device)
                 mask = torch.tensor([p[1] for p in pair], dtype=torch.float32, device=self.device)
-                embs = self.model(ids, mask).cpu()
+                embs = self.model.encode(ids, mask).cpu()
                 encoded_batches.append(embs)
 
         return torch.cat(encoded_batches, dim=0) if encoded_batches else torch.empty(0, 1)
 
     def load(self) -> None:
-        meta_path = self.artifact_dir / "siamese_meta.json"
-        vocab_path = self.artifact_dir / "tokenizer_vocab.json"
-        ckpt_path = self.artifact_dir / "siamese_bilstm_best.pt"
+        """Load Siamese + TextCNN models and precompute document embeddings."""
+        # ── Siamese ──
+        siamese_model, siamese_stoi, siamese_meta = load_siamese_from_artifacts(
+            self.artifact_dir, device=self.device,
+        )
+        self.siamese_stoi = siamese_stoi
+        self.pad_idx = siamese_stoi.get("<PAD>", 0)
+        self.unk_idx = siamese_stoi.get("<UNK>", 1)
+        self.max_d_len = int(siamese_meta.get("max_len", self.max_d_len))
+        self.max_q_len = int(siamese_meta.get("max_len", self.max_q_len))
 
-        if not meta_path.is_file():
-            raise FileNotFoundError(f"Missing metadata file: {meta_path}")
-        if not vocab_path.is_file():
-            raise FileNotFoundError(f"Missing vocab file: {vocab_path}")
-        if not ckpt_path.is_file():
-            raise FileNotFoundError(f"Missing checkpoint file: {ckpt_path}")
+        # SiameseBiLSTM.encoder == SiameseBiLSTMEncoder
+        self.model = siamese_model.to(self.device)
+        self.model.eval()
+
+        # ── Corpus + doc embeddings ──
         if not self.corpus_path.is_file():
             raise FileNotFoundError(f"Missing corpus file: {self.corpus_path}")
-
-        with open(meta_path, encoding="utf-8") as f:
-            meta = json.load(f)
-        with open(vocab_path, encoding="utf-8") as f:
-            vocab_data = json.load(f)
-
-        self.stoi = vocab_data["stoi"]
-        self.pad_idx = self.stoi.get("<PAD>", self.stoi.get("PAD", 0))
-        self.unk_idx = self.stoi.get("<UNK>", self.stoi.get("UNK", 1))
-
-        raw_state_dict = torch.load(ckpt_path, map_location="cpu")
-        if not isinstance(raw_state_dict, dict):
-            raise ValueError(f"Unsupported checkpoint format at {ckpt_path}")
-
-        if "encoder.embedding.weight" in raw_state_dict:
-            state_dict = {
-                key.removeprefix("encoder."): value for key, value in raw_state_dict.items()
-            }
-        else:
-            state_dict = raw_state_dict
-
-        embedding_weight = state_dict["embedding.weight"]
-        ckpt_vocab_size, ckpt_embed_dim = embedding_weight.shape
-        loaded_vocab_size = len(self.stoi)
-        if ckpt_vocab_size != loaded_vocab_size:
-            raise ValueError(
-                f"Siamese checkpoint vocab_size={ckpt_vocab_size} != loaded vocab size={loaded_vocab_size}"
-            )
-        expected_embed_dim = int(meta.get("embedding_dim", meta.get("embed_dim", ckpt_embed_dim)))
-        if ckpt_embed_dim != expected_embed_dim:
-            raise ValueError(
-                f"Siamese checkpoint embed_dim={ckpt_embed_dim} != meta embed_dim={expected_embed_dim}"
-            )
-        model = SiameseBiLSTMEncoder(
-            embedding_weight=embedding_weight,
-            hidden_size=int(meta["hidden_size_per_direction"]),
-            num_layers=int(meta.get("num_layers", 1)),
-            dropout=float(meta.get("dropout", 0.0)),
-            bidirectional=bool(meta.get("bidirectional", True)),
-            pad_idx=self.pad_idx,
-        )
-        model.load_state_dict(state_dict, strict=True)
-        model.to(self.device)
-        model.eval()
-        self.model = model
-
         df = pd.read_csv(self.corpus_path, sep="\t")
         if "article_content" not in df.columns:
             raise ValueError("Corpus file must have an 'article_content' column.")
@@ -648,71 +543,39 @@ class SiameseBiLSTMDemo:
         texts = self.corpus_df["article_content"].fillna("").astype(str).tolist()
         self.doc_embeddings = self._batch_encode_docs(texts)
 
+        # Build TF-IDF index for keyword-based first-pass retrieval.
+        # Siamese alone has MRR=0.36; TF-IDF catches exact keyword matches
+        # that Siamese misses, then Siamese re-ranks for semantic ordering.
+        self.tfidf_vectorizer = TfidfVectorizer(max_features=100_000)
+        self.tfidf_matrix = csr_matrix(self.tfidf_vectorizer.fit_transform(texts))
+
+        # Build label-to-indices from merged labels (match TextCNN's 5-class output).
         self.label_to_indices: dict[str, list[int]] = {}
+        merge_map: dict[str, str] = {}
+        merge_path = self.corpus_path.parent / "label_merge_map.json"
+        if merge_path.is_file():
+            with open(merge_path, encoding="utf-8") as f:
+                merge_map = json.load(f)
         if "macro_domain" in self.corpus_df.columns:
             for i, label in enumerate(self.corpus_df["macro_domain"].astype(str)):
-                self.label_to_indices.setdefault(label, []).append(i)
+                merged: str = merge_map.get(label, str(label))
+                self.label_to_indices.setdefault(merged, []).append(i)
 
-        textcnn_meta_path = self.textcnn_artifact_dir / "textcnn_meta.json"
-        textcnn_vocab_path = self.textcnn_artifact_dir / "tokenizer_vocab.json"
-        textcnn_ckpt_path = self.textcnn_artifact_dir / "textcnn_best.pt"
-        if not textcnn_meta_path.is_file():
-            raise FileNotFoundError(f"Missing TextCNN metadata file: {textcnn_meta_path}")
-        if not textcnn_vocab_path.is_file():
-            raise FileNotFoundError(f"Missing TextCNN vocab file: {textcnn_vocab_path}")
-        if not textcnn_ckpt_path.is_file():
-            raise FileNotFoundError(f"Missing TextCNN checkpoint file: {textcnn_ckpt_path}")
-
-        with open(textcnn_meta_path, encoding="utf-8") as f:
-            textcnn_meta = json.load(f)
-        with open(textcnn_vocab_path, encoding="utf-8") as f:
-            textcnn_vocab_data = json.load(f)
-
-        self.textcnn_stoi = textcnn_vocab_data["stoi"]
-        self.textcnn_pad_idx = self.textcnn_stoi.get("<PAD>", self.textcnn_stoi.get("PAD", 0))
-        self.textcnn_unk_idx = self.textcnn_stoi.get("<UNK>", self.textcnn_stoi.get("UNK", 1))
+        # ── TextCNN ──
+        textcnn_model, textcnn_stoi, textcnn_labels, textcnn_meta = load_textcnn_from_artifacts(
+            self.textcnn_artifact_dir, device=self.device,
+        )
+        self.textcnn_stoi = textcnn_stoi
+        self.textcnn_pad_idx = textcnn_stoi.get("<PAD>", 0)
+        self.textcnn_unk_idx = textcnn_stoi.get("<UNK>", 1)
         self.textcnn_max_len = int(textcnn_meta.get("max_len", 128))
-        self.textcnn_labels = list(textcnn_meta["labels"])
+        self.textcnn_labels = textcnn_labels
+        self.textcnn_model = textcnn_model.to(self.device)
+        self.textcnn_model.eval()
 
-        textcnn_state = torch.load(textcnn_ckpt_path, map_location="cpu")
-        if not isinstance(textcnn_state, dict):
-            raise ValueError(f"Unsupported TextCNN checkpoint format at {textcnn_ckpt_path}")
-        textcnn_embedding = textcnn_state["embedding.weight"]
-        tcnn_vocab_size, tcnn_embed_dim = textcnn_embedding.shape
-        loaded_tcnn_vocab_size = len(self.textcnn_stoi)
-        if tcnn_vocab_size != loaded_tcnn_vocab_size:
-            raise ValueError(
-                f"TextCNN checkpoint vocab_size={tcnn_vocab_size} != loaded vocab size={loaded_tcnn_vocab_size}"
-            )
-        if "filter_sizes" in textcnn_meta:
-            kernel_sizes = list(textcnn_meta["filter_sizes"])
-        else:
-            conv_keys = sorted(
-                k for k in textcnn_state if k.startswith("convs.") and k.endswith(".weight")
-            )
-            kernel_sizes = [int(textcnn_state[k].shape[-1]) for k in conv_keys]
-        num_filters = int(
-            textcnn_meta.get("num_filters", textcnn_state["convs.0.weight"].shape[0])
-        )
-        textcnn_dropout = float(
-            textcnn_meta.get(
-                "dropout",
-                textcnn_meta.get("train_strategy", {}).get("dropout", 0.5),
-            )
-        )
-
-        textcnn_model = TextCNNClassifier(
-            embedding_weight=textcnn_embedding,
-            num_classes=len(self.textcnn_labels),
-            kernel_sizes=kernel_sizes,
-            num_filters=num_filters,
-            dropout=textcnn_dropout,
-            pad_idx=self.textcnn_pad_idx,
-        )
-        textcnn_model.load_state_dict(textcnn_state, strict=True)
-        textcnn_model.to(self.device)
-        textcnn_model.eval()
-        self.textcnn_model = textcnn_model
+        print(f"Loaded Siamese: vocab={len(siamese_stoi)}, max_len={self.max_d_len}")
+        print(f"Loaded TextCNN: vocab={len(textcnn_stoi)}, labels={textcnn_labels}")
+        print(f"Indexed {len(self.corpus_df)} documents")
 
     def classify_topic(self, query: str, top_n: int = 3) -> dict[str, Any]:
         if self.textcnn_model is None:
@@ -744,28 +607,46 @@ class SiameseBiLSTMDemo:
         }
 
     def search(self, query: str, top_k: int, topic_labels: list[str] | None = None) -> list[dict[str, Any]]:
+        """TF-IDF first-pass → Siamese re-rank hybrid retrieval.
+
+        1. Use TF-IDF to find top-200 keyword-matching candidates.
+        2. Apply optional topic label filter.
+        3. Score candidates with Siamese cosine similarity.
+        4. Return top-k results ranked by Siamese score.
+        """
         if self.model is None or self.doc_embeddings is None:
             raise RuntimeError("Model is not loaded.")
+        if self.tfidf_vectorizer is None or self.tfidf_matrix is None:
+            raise RuntimeError("TF-IDF index is not built.")
         q = query.strip()
         if not q:
             return []
 
-        if topic_labels and hasattr(self, "label_to_indices") and self.label_to_indices:
-            candidate_idx = []
-            for label in topic_labels:
-                candidate_idx.extend(self.label_to_indices.get(label, []))
-            candidate_idx = sorted(set(candidate_idx))
-            if not candidate_idx:
-                candidate_idx = list(range(len(self.corpus_df)))
-        else:
-            candidate_idx = list(range(len(self.corpus_df)))
+        # ── Step 1: TF-IDF first-pass ──
+        assert self.tfidf_vectorizer is not None and self.tfidf_matrix is not None
+        q_vec: csr_matrix = self.tfidf_vectorizer.transform([q])  # type: ignore[assignment]
+        tfidf_scores = (self.tfidf_matrix @ q_vec.T).toarray().ravel()
+        n_candidates = min(200, len(tfidf_scores))
+        candidate_idx = list(np.argpartition(-tfidf_scores, n_candidates - 1)[:n_candidates])
 
+        # ── Step 2: Topic filter (optional, only with very high confidence) ──
+        if topic_labels and hasattr(self, "label_to_indices") and self.label_to_indices:
+            allowed: set[int] = set()
+            for label in topic_labels:
+                allowed.update(self.label_to_indices.get(label, []))
+            if allowed:
+                candidate_idx = [i for i in candidate_idx if i in allowed]
+
+        if not candidate_idx:
+            candidate_idx = list(range(min(200, len(self.corpus_df))))
+
+        # ── Step 3: Siamese re-rank ──
         ids, mask = self._encode_text(q, self.max_q_len)
         q_ids = torch.tensor([ids], dtype=torch.long, device=self.device)
         q_mask = torch.tensor([mask], dtype=torch.float32, device=self.device)
 
         with torch.no_grad():
-            q_emb = self.model(q_ids, q_mask).cpu()
+            q_emb = self.model.encode(q_ids, q_mask).cpu()
             filtered_embeddings = self.doc_embeddings[candidate_idx]
             scores = torch.matmul(filtered_embeddings, q_emb.t()).squeeze(1)
 
@@ -944,15 +825,8 @@ class SiameseBiLSTMDemo:
         return results
 
     def _select_answer_contexts(self, results: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        rated = [
-            r
-            for r in results
-            if isinstance(r.get("retrieval_rating"), (int, float))
-            and float(r["retrieval_rating"]) >= self.answer_min_rating
-        ]
-        pool = rated if rated else results[: self.answer_top_k]
-        pool = pool[: self.answer_top_k]
-        return pool
+        """Take top-k results as LLM context (no rating gating — _is_grounded handles verification)."""
+        return results[: self.answer_top_k]
 
     def answer_grounded_with_groq(
         self,
@@ -1165,14 +1039,18 @@ class DemoHandler(BaseHTTPRequestHandler):
                 self._json_response(400, {"error": "question is required"})
                 return
             topic_prediction = self.engine.classify_topic(question, top_n=3)
-            if topic_prediction.get("confidence", 0.0) < 0.25:
-                topic_labels = None
-            else:
+            # Only trust topic filtering when confidence is very high;
+            # otherwise search all docs to avoid retrieval blind spots.
+            if topic_prediction.get("confidence", 0.0) >= 0.85:
                 topic_labels = select_topic_labels(
                     topic_prediction,
-                    min_prob=0.12,
+                    min_prob=0.15,
                     max_topics=3,
                 )
+                if not topic_labels:
+                    topic_labels = None
+            else:
+                topic_labels = None
             results = self.engine.search(question, top_k=self.top_k, topic_labels=topic_labels)
             results = self.engine.rate_retrieval_with_groq(question, results)
             answer = self.engine.answer_grounded_with_groq(
@@ -1188,9 +1066,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--artifact-dir", type=str, default=str(DEFAULT_ARTIFACT_DIR))
     parser.add_argument("--textcnn-artifact-dir", type=str, default=str(DEFAULT_TEXTCNN_ARTIFACT_DIR))
     parser.add_argument("--corpus-path", type=str, default=str(DEFAULT_DATA_PATH))
-    parser.add_argument("--max-docs", type=int, default=3000, help="How many corpus rows to index for demo speed.")
+    parser.add_argument("--max-docs", type=int, default=0, help="How many corpus rows to index (0 = all).")
     parser.add_argument("--top-k", type=int, default=5)
-    parser.add_argument("--max-q-len", type=int, default=64)
+    parser.add_argument("--max-q-len", type=int, default=128)
     parser.add_argument("--max-d-len", type=int, default=256)
     parser.add_argument("--device", type=str, default="cpu", choices=["cpu", "cuda"])
     parser.add_argument("--host", type=str, default="127.0.0.1")
@@ -1212,7 +1090,11 @@ def main() -> None:
     )
     print("Loading model + corpus index...")
     engine.load()
-    print(f"Ready. Indexed {len(engine.corpus_df)} documents.")
+    if engine.groq_api_key:
+        print(f"🔑 GROQ API key detected → verified LLM answers ENABLED (model: {engine.groq_model})")
+    else:
+        print("⚠️  No GROQ_API_KEY → LLM answers disabled; showing top retrieved passage only.")
+    print(f"Indexed {len(engine.corpus_df)} documents. Open http://{args.host}:{args.port}")
 
     DemoHandler.engine = engine
     DemoHandler.top_k = int(args.top_k) if args.top_k is not None else 3
