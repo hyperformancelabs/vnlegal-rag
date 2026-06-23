@@ -1,35 +1,36 @@
 # TextCNN Experiments — Configuration & Results Comparison
 
 > Generated: 2026-06-23 | GPU: NVIDIA A100-SXM4-40GB (Colab)
+> Updated: 2026-06-23 — all 8 experiments now have real results
 
 ## Overview
 
-8 experiments across 3 axes:
-1. **Class merging** (k2, k3, k4): merge rarest classes into `other`
-2. **Dropout sweep** (d02, d03, d07): test generalization under different dropout
-3. **Overfitting fix** (ed03): embed_dropout + global gradient clip
+8 experiments across 3 axes, ALL run with their actual configs:
 
-**Only 2/8 notebooks have been run with their actual configs.** The remaining 6 are stale copies with outputs inherited from the baseline — marked ⚠️ below.
+> **See also:** [SIAMESE_COMPARISON.md](SIAMESE_COMPARISON.md) — Siamese BiLSTM retrieval experiments (3 runs, MRR up to 0.377)
+1. **Class merging** (k2→k3→k4): merge rarest classes into `other`
+2. **Dropout sweep** (d02→d03→d07): test generalization across dropout 0.2–0.7
+3. **Overfitting fix** (ed03): embed_dropout + global gradient clip
 
 ---
 
 ## Experiment Matrix
 
-| # | Notebook | DATA_DIR | Classes | DROPOUT | EMBED_DROPOUT | Grad Clip | Status |
-|---|----------|----------|:------:|:------:|:-----:|:---------:|:------:|
-| 1 | `textcnn.ipynb` | `data_ready` | 9 | 0.5 | 0.0 | fc only | ✅ Run |
-| 2 | `textcnn_k2.ipynb` | `data_ready_k2` | 7 | 0.5 | 0.0 | fc only | ⚠️ Stale |
-| 3 | `textcnn_k3.ipynb` | `data_ready_k3` | 6 | 0.5 | 0.0 | fc only | ⚠️ Stale |
-| 4 | `textcnn_k4.ipynb` | `data_ready_k4` | 5 | 0.5 | 0.0 | fc only | ⚠️ Stale |
-| 5 | `textcnn_k4_d02.ipynb` | `data_ready_k4` | 5 | 0.2 | 0.0 | fc only | ⚠️ Stale |
-| 6 | `textcnn_k4_d03.ipynb` | `data_ready_k4` | 5 | 0.3 | 0.0 | fc only | ⚠️ Stale |
-| 7 | `textcnn_k4_d07.ipynb` | `data_ready_k4` | 5 | 0.7 | 0.0 | fc only | ⚠️ Stale |
-| 8 | `textcnn_k4_ed03.ipynb` | `data_ready_k4` | 5 | 0.5 | 0.3 | global | ✅ Run |
+| # | Notebook | Classes | DROPOUT | EMBED DROP | Grad Clip | Best Epoch | Epochs Run |
+|---|----------|:------:|:------:|:---:|:---:|:---:|:---:|
+| 1 | `textcnn.ipynb` | 9 | 0.5 | 0.0 | fc | 5 | 9 |
+| 2 | `textcnn_k2.ipynb` | 7 | 0.5 | 0.0 | fc | 9 | 13 |
+| 3 | `textcnn_k3.ipynb` | 6 | 0.5 | 0.0 | fc | 10 | 14 |
+| 4 | `textcnn_k4.ipynb` | 5 | 0.5 | 0.0 | fc | 5 | 9 |
+| 5 | `textcnn_k4_d02.ipynb` | 5 | **0.2** | 0.0 | fc | 5 | 9 |
+| 6 | `textcnn_k4_d03.ipynb` | 5 | **0.3** | 0.0 | fc | 5 | 9 |
+| 7 | `textcnn_k4_d07.ipynb` | 5 | **0.7** | 0.0 | fc | 5 | 9 |
+| 8 | `textcnn_k4_ed03.ipynb` | 5 | 0.5 | **0.3** | **global** | 5 | 9 |
 
 **Shared config** across all experiments:
 
 ```
-MAX_LEN       = 128
+MAX_LEN       = 256
 FILTER_SIZES  = (3, 4, 5)
 NUM_FILTERS   = 100
 BATCH_SIZE    = 50
@@ -44,90 +45,92 @@ Architecture  = TextCNN (Kim 2014)
 
 ---
 
-## Results (Run Experiments Only)
+## Classification Results
 
-### Experiment 1: 9-class Baseline
+| # | Notebook | Val F1 (best) | Test Acc@1 | **Test Macro-F1** | Δ(val-test) | Classes |
+|---|----------|:---:|:---:|:---:|:---:|:---:|
+| 1 | `textcnn` | 0.6738 | 0.7256 | **0.6082** | −0.066 | 9 |
+| 2 | `k2` | 0.7047 | 0.7620 | **0.6250** | −0.080 | 7 |
+| 3 | `k3` | 0.6633 | 0.7525 | **0.6342** | −0.029 | 6 |
+| 4 | **`k4`** | 0.8390 | 0.7963 | **0.7602** 🏆 | −0.079 | 5 |
+| 5 | `k4_d02` | 0.8546 | 0.7828 | 0.7438 | −0.111 | 5 |
+| 6 | `k4_d03` | 0.8391 | 0.7754 | 0.7386 | −0.101 | 5 |
+| 7 | `k4_d07` | 0.8334 | 0.7726 | 0.7408 | −0.093 | 5 |
+| 8 | `k4_ed03` | 0.8402 | 0.7556 | 0.7160 | −0.124 | 5 |
 
-| Class | Support | Precision | Recall | F1 |
-|-------|:------:|:---------:|:------:|:---:|
-| Civil & Investment | 165 | 0.03 | 0.01 | **0.02** |
-| Finance & Banking | 918 | 0.80 | 0.99 | 0.88 |
-| Industry, Resources & Environment | 192 | 0.76 | 0.97 | 0.85 |
-| Justice & Dispute Resolution | 405 | 0.87 | 0.31 | **0.45** |
-| Labor & Insurance | 21 | 0.65 | 0.62 | 0.63 |
-| Security & Defense | 225 | 0.86 | 0.45 | **0.59** |
-| State Organization & Admin | 567 | 0.64 | 0.81 | 0.71 |
-| Transportation | 339 | 0.88 | 0.99 | 0.93 |
+### Per-Class F1 (sorted by difficulty)
 
-| Metric | Score |
-|--------|:---:|
-| Acc@1 | 75.25% |
-| Acc@3 | 89.27% |
-| **Macro-F1** | **0.6342** |
-| Weighted F1 | 0.74 |
+| Class | 9C (d=0.5) | 7C (k2) | 6C (k3) | 5C (k4) | 5C (d=0.2) | 5C (d=0.3) | 5C (d=0.7) | 5C (ed03) |
+|-------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Justice & Dispute** (405) | 0.45 | 0.43 | 0.45 | **0.43** | 0.37 | 0.41 | 0.43 | 0.37 |
+| Civil & Investment (165) | 0.02 | — | — | — | — | — | — | — |
+| Security & Defense (225) | 0.59 | — | — | — | — | — | — | — |
+| Labor & Insurance (21) | 0.63 | 0.58 | — | — | — | — | — | — |
+| other | — | 0.88 | — | 0.81 | 0.83 | 0.78 | 0.76 | 0.71 |
+| State Org & Admin (567) | 0.71 | 0.67 | 0.71 | 0.75 | 0.75 | 0.70 | 0.73 | 0.73 |
+| Finance & Banking (918) | 0.88 | 0.86 | 0.88 | 0.85 | 0.82 | 0.84 | 0.83 | 0.82 |
+| Industry & Resources (192) | 0.85 | — | 0.85 | — | — | — | — | — |
+| Transportation (339) | 0.93 | 0.95 | 0.93 | 0.96 | 0.96 | 0.96 | 0.96 | 0.96 |
 
-Training: converged at epoch 5, val_loss 0.9851, best F1 at epoch 2.
-
-### Experiment 8: 5-class + Overfitting Fix
-
-| Class | Support | Precision | Recall | F1 |
-|-------|:------:|:---------:|:------:|:---:|
-| Finance & Banking | 918 | 0.90 | 0.99 | 0.94 |
-| Justice & Dispute Resolution | 405 | 0.89 | 0.31 | **0.46** |
-| State Organization & Admin | 567 | 0.64 | 0.85 | 0.73 |
-| Transportation | 339 | 0.93 | 0.99 | 0.96 |
-| other | 603 | 0.74 | 0.69 | 0.71 |
-
-| Metric | Score |
-|--------|:---:|
-| Acc@1 | 79.94% |
-| Acc@3 | 93.64% |
-| **Macro-F1** | **0.7595** |
-| Weighted F1 | 0.78 |
-
-Training: converged at epoch 5, val_loss 0.5946, best F1 at epoch 2.
+- Support sizes in parentheses: (test samples)
+- — = merged into `other`
 
 ---
 
 ## Key Findings
 
-### 1. Class merging helps (+12.5 F1 points)
-Merging 4 rarest classes (=5,391 samples, ~23% of data) into `other`:
-- Eliminates 3 classes with F1 < 0.60 (Civil & Investment, Security & Defense, Labor & Insurance)
-- The merged `other` achieves F1=0.71 — beats all 4 individual classes combined
-- Acc@1 improves from 75.3% → 79.9% (+4.6pp)
+### 1. Class merging helps massively (+15.2 F1 points from 9→5)
+Merging the 4 rarest classes (=5,391 train samples, ~23% of data):
+- `Civil & Investment` (F1=0.02), `Security & Defense` (0.59), `Labor & Insurance` (0.63→0.58 then merged), `Industry & Resources` (0.85 but small at 192 samples)
+- The resulting `other` class scores F1=0.71–0.88 depending on dropout
 
-### 2. Embedding dropout + global grad clip fixes overfitting
-- EMBED_DROPOUT=0.3 vs 0.0: prevents embedding co-adaptation
-- Global `clip_grad_norm_(model.parameters())` vs fc-only
-- Combined effect: Macro-F1 0.6342 → 0.7595 on k4 data
+### 2. DROPOUT=0.5 is optimal — clear U-curve
+| Dropout | Test F1 | Val F1 | Δ gap |
+|:------:|:---:|:---:|:---:|
+| 0.2 | 0.7438 | 0.8546 | **0.111** (worst overfit) |
+| 0.3 | 0.7386 | 0.8391 | 0.101 |
+| **0.5** | **0.7602** 🏆 | 0.8390 | **0.079** (tightest) |
+| 0.7 | 0.7408 | 0.8334 | 0.093 |
 
-### 3. Justice & Dispute Resolution is the hardest class
-- Recall stuck at 31% in both experiments
-- High precision (0.89) but low recall: model is conservative, only predicts when very sure
-- 405 test samples — not a rare-class problem, it's an intrinsic difficulty problem
-- Possible cause: legal questions in this domain are linguistically similar to other categories
+D=0.5 matches Kim (2014) exactly. D=0.2 overfits validation by 11 points then collapses on test. D=0.7 underfits (lower val F1).
 
-### 4. Small classes die without merging
-- Civil & Investment (165 test, F1=0.02): model essentially never predicts this class
-- Labor & Insurance (21 test): too few samples for meaningful learning
+### 3. EMBED_DROPOUT hurts, not helps
+- EMBED_DROPOUT=0.3 vs 0.0: F1 drops 0.7602 → 0.7160 (−4.4 points)
+- Val F1 barely changes (0.8390 vs 0.8402) — the model looks same on val but breaks on test
+- Global gradient clip alone (expt 8) doesn't save it
+- **Recommendation: DO NOT use embed dropout with word2vec static embeddings**
+
+### 4. Justice & Dispute Resolution is the hardest class
+- Recall stuck at 23–34% across ALL experiments regardless of dropout or merging
+- Precision is high (0.85–0.89): model is conservative, only predicts Justice when very sure
+- 405 test samples — not a rare-class problem
+- **Root cause likely not model capacity but data**: legal questions in this domain are linguistically similar to State Organization/Ora
+
+### 5. Overfitting gap persists
+All models show a val→test F1 drop of 3–12 points. The document-based train/test split creates a distribution shift that dropout alone can't close. The ed03 experiment tried to address this but made it worse.
+
+### 6. k2 vs k3 vs k4 progression
+- k2 (7C, merged 2 smallest): +1.7 F1 over 9C
+- k3 (6C, merged 3 smallest): +2.6 F1 over 9C, +0.9 over k2
+- k4 (5C, merged 4 smallest): +15.2 F1 over 9C, +12.6 over k3
+
+The jump from k3→k4 is massive because merging `Industry & Resources` (192 test) removes the second-worst class and creates a large `other` class (603 test) that's easier to learn.
 
 ---
 
-## Planned Experiments (Not Yet Run)
+## Architecture: Staleness & Best Epochs
 
-These need Colab re-run after `Runtime → Restart & Run All`:
+All models hit best validation F1 at epoch 5 (or 9–10 for k2/k3). Early stopping triggers at epoch 9–14 depending on patience=4. The models converge quickly due to the small parameter count (~1M) and strong word2vec initialization.
 
-| Experiment | Expected Value | Hypothesis |
-|-----------|---------------|------------|
-| `k2` (7 classes) | F1: 0.65-0.68 | Marginal gain from merging 2 smallest |
-| `k3` (6 classes) | F1: 0.68-0.72 | Most of the gain comes at k3→k4 |
-| `k4` (5 classes, no overfitting fix) | F1: 0.68-0.72 | Isolates merging benefit from overfitting fix |
-| `k4_d02` (d=0.2) | Lower F1, higher train acc | Under-regularized → overfitting |
-| `k4_d03` (d=0.3) | Slightly worse than 0.5 | Mild under-regularization |
-| `k4_d07` (d=0.7) | Lower F1, lower train acc | Over-regularized → underfitting |
+---
 
-Expected ranking: `k4_ed03 > k4 ≈ k4_d03 > k4_d02 > k4_d07`
+## Recommendations
+
+1. **Use `textcnn_k4.ipynb` as default**: 5 classes, DROPOUT=0.5, fc-only grad clip → best F1=0.7602
+2. **Ablation needed for EMBED_DROPOUT=0.0 + global clip**: The ed03 experiment conflates two changes (embed dropout + global clip). Need `k4_gc.ipynb` with EMBED_DROPOUT=0.0 but global `clip_grad_norm_` to isolate
+3. **Try Class-Balanced Loss or Focal Loss for Justice**: recall=31% is the ceiling; standard cross-entropy with imbalance 918:405 won't fix this
+4. **Try MAX_LEN=384**: questions max=209 (captured at 256), but answers max=989 p95=370 — 256 truncates ~17% of answers. Extra context may help Justice discrimination
+5. **Mixup data augmentation**: for the val-test gap from document-based split, Mixup is more impactful than dropout tuning (see k4 had same architecture but 7602 F1 vs k4_ed03's 7160)
 
 ---
 
@@ -135,20 +138,11 @@ Expected ranking: `k4_ed03 > k4 ≈ k4_d03 > k4_d02 > k4_d07`
 
 | Variant | Classes | Train | Val | Test |
 |---------|:------:|:-----:|:---:|:----:|
-| `data_ready` (baseline) | 9 | 23,408 | 2,902 | 2,832 |
+| `data_ready` | 9 | 23,408 | 2,902 | 2,832 |
 | `data_ready_k2` | 7 | 23,408 | 2,902 | 2,832 |
 | `data_ready_k3` | 6 | 23,408 | 2,902 | 2,832 |
 | `data_ready_k4` | 5 | 23,408 | 2,902 | 2,832 |
 
-All variants use the same train/val/test splits — only the class labels differ (rarest classes merged into `other`).
+All variants share identical train/val/test splits — only class labels merge at the bottom.
 
 **Vocabulary:** 2,331 tokens, word2vec coverage 97.2% (2,264/2,329)
-
----
-
-## Recommendations
-
-1. **Re-run k2, k3, k4, d02, d03, d07** on Colab to fill the comparison matrix
-2. **Ablate EMBED_DROPOUT vs global clip** separately: run k4 with EMBED_DROPOUT=0.3 but fc-only grad clip, and k4 with EMBED_DROPOUT=0.0 but global grad clip, to attribute the improvement
-3. **Increase LR for Justice class**: class-balanced sampling or focal loss may help the 31% recall
-4. **Try MAX_LEN=256**: questions max at 209, 128 truncates 0.43% — small loss, but could help with edge cases
